@@ -14,7 +14,7 @@ extern CAN_HandleTypeDef hcan1;
  */
 void DJI_M3508_Task_Init(void)
 {
-    motor_3508.PID_Omega.Init(250.0787f, 207.519f, 0.172835f, 0.0f, 10000.0f, 10000.0f);
+    motor_3508.PID_Omega.Init(450.0f, 279.936f, 0.0f, 0.0f, 10000.0f, 10000.0f);
     motor_3508.Init(&hcan1, CAN_Motor_ID_0x201, Control_Method_OMEGA);
     // motor_3508.Init(&hcan1, CAN_Motor_ID_0x201, Control_Method_OPENLOOP);
 }
@@ -37,7 +37,7 @@ void DJI_M3508_Task(void *argument)
     int time_counter = 0;
     for(;;)
     {
-        motor_3508.Set_Target_Omega(10.0f);
+        motor_3508.Set_Target_Omega(5.0f);
 
         // if ((time_counter > 1000) && (time_counter <= 10000))
         // {
