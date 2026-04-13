@@ -4,6 +4,8 @@
 
 本项目基于 robowalker_train 框架思路，融合 STM32CubeMX + CMake + FreeRTOS，面向 STM32F427 平台，作为队内通用板级支持包与任务开发基础。
 
+使用vscode需要清除旧路径的缓存，重新配置Cmake文件
+
 ## 特性
 
 - MCU: STM32F427 系列
