@@ -49,15 +49,15 @@ void DrawKFS_Task() {
     //CAN_Init(&hcan2, CAN2_Motor_Call_Back);
     Motor_Z.PID_Omega.Init(1500.0f, 600.0f, 0.0f, 0.0f, 3000.0f, 8000.0f);
     Motor_Z.PID_Angle.Init(20.0f, 0.0f, 0.0f, 0.0f, 10.0f, 15.0f);
-    Motor_Z.Init(&hcan2, CAN_Motor_ID_0x201, Control_Method_ANGLE);
+    Motor_Z.Init(&hcan2, CAN_Motor_ID_0x205, Control_Method_ANGLE);
 
     Motor_X.PID_Omega.Init(1000.0f, 200.0f, 0.0f, 0.0f, 1500.0f, 3000.0f);
     Motor_X.PID_Angle.Init(10.0f, 0.0f, 0.0f, 0.0f, 10.0f, 10.0f);
-    Motor_X.Init(&hcan2, CAN_Motor_ID_0x202, Control_Method_ANGLE);
+    Motor_X.Init(&hcan2, CAN_Motor_ID_0x206, Control_Method_ANGLE);
 
     Motor_R.PID_Omega.Init(1300.0f, 200.0f, 0.0f, 0.0f, 1500.0f, 3000.0f);
     Motor_R.PID_Angle.Init(15.0f, 0.0f, 0.0f, 0.0f, 10.0f, 15.0f);
-    Motor_R.Init(&hcan2, CAN_Motor_ID_0x203, Control_Method_ANGLE);
+    Motor_R.Init(&hcan2, CAN_Motor_ID_0x207, Control_Method_ANGLE);
 
     MotorAdapter_C620 Adapter_Z(Motor_Z);
     MotorAdapter_C610 Adapter_X(Motor_X);
