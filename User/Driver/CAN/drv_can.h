@@ -72,7 +72,7 @@ extern "C" {
 #endif
 
 extern CAN_HandleTypeDef hcan1;
-// extern CAN_HandleTypeDef hcan2;
+extern CAN_HandleTypeDef hcan2;
 
 extern Struct_CAN_Manage_Object CAN1_Manage_Object;
 extern Struct_CAN_Manage_Object CAN2_Manage_Object;

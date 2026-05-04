@@ -1,9 +1,6 @@
 /**
  * @file tsk_config_and_callback.cpp
- * @author 
- * @brief 临时任务调度测试用函数, 后续用来存放个人定义的回调函数以及若干任务
- * @version 0.1
- *
+ * @brief Task init and CAN callback dispatch.
  */
 
 #include "tsk_config_and_callback.h"
@@ -11,50 +8,74 @@
 #include "main.h"
 #include "drv_bsp.h"
 #include "drv_can.h"
-#include "motor_dm_task.h"
-#include "motor_dji_task.h"
+#include "drv_uart.h"
+#include "usart.h"
+#include "ChassisTask.h"
+#include "climbingTask2.h"
+#include "ClampingTask.h"
 
-/**
- * @brief CAN报文回调函数
- *
- * @param Rx_Buffer CAN接收的信息结构体
- */
-static void CAN_Motor_Call_Back(Struct_CAN_Rx_Buffer *Rx_Buffer)
-{
-  switch (Rx_Buffer->Header.StdId)
-  {
-    case (0x201):
-    {
-      DJI_M3508_CAN_RxCpltCallback(Rx_Buffer->Data);
-      break;
+extern "C" void Chassis_CAN_Rx_Dispatch(CAN_HandleTypeDef *hcan, Struct_CAN_Rx_Buffer *Rx_Buffer);
+
+static void CAN1_Global_Call_Back(Struct_CAN_Rx_Buffer *Rx_Buffer) {
+    switch (Rx_Buffer->Header.StdId) {
+        case (0x201): {
+            Climbing_CAN_Rx_Dispatch(Rx_Buffer);
+            break;
+        }
+        case (0x202): {
+            Climbing_CAN_Rx_Dispatch(Rx_Buffer);
+            break;
+        }
+        case (0x203): {
+            Climbing_CAN_Rx_Dispatch(Rx_Buffer);
+            break;
+        }
+        case (0x204): {
+            Climbing_CAN_Rx_Dispatch(Rx_Buffer);
+            break;
+        }
+        case (0x205): {
+            Clamping_CAN_Rx_Dispatch(Rx_Buffer);
+            break;
+        }
+        default:
+            break;
     }
-    case (0x00):
-    {
-      J4310_CAN_RxCpltCallback(Rx_Buffer->Data);
-      break;
-    }
-    default:
-    {
-      break;
-    }
-  }
 }
 
-/**
- * @brief 全局任务初始化函数
- *
- * 调用位置：
- * - 在freeRtos.c中的MX_FREERTOS_Init()中被调用，作为FreeRTOS任务创建前的准备工作
- *
- * 功能：
- * - 初始化全局资源（例如CAN总线、GPIO等）
- */
-void Task_Init(void)
-{
-	BSP_Init(BSP_DC24_LU_ON | BSP_DC24_LD_ON | BSP_DC24_RU_ON | BSP_DC24_RD_ON);
-  	CAN_Init(&hcan1, CAN_Motor_Call_Back);
+extern Class_Motor_C620 Motor_Z;
+extern Class_Motor_C610 Motor_X;
+extern Class_Motor_C610 Motor_R;
 
-	// 电机任务函数的初始化
-	DJI_M3508_Task_Init();
-	J4310_Task_Init();
+void CAN2_Global_Call_Back(Struct_CAN_Rx_Buffer *Rx_Buffer) {
+    switch (Rx_Buffer->Header.StdId) {
+        case (0x201):
+        case (0x202):
+        case (0x203):
+        case (0x204):
+            Chassis_CAN_Rx_Dispatch(&hcan2, Rx_Buffer);
+            break;
+        case (0x205):
+            Motor_Z.CAN_RxCpltCallback(Rx_Buffer->Data);
+            break;
+        case (0x206):
+            Motor_X.CAN_RxCpltCallback(Rx_Buffer->Data);
+            break;
+        case (0x207):
+            Motor_R.CAN_RxCpltCallback(Rx_Buffer->Data);
+            break;
+    }
+}
+
+void Task_Init(void) {
+    BSP_Init(BSP_DC24_LU_ON | BSP_DC24_LD_ON | BSP_DC24_RU_ON | BSP_DC24_RD_ON);
+
+    CAN_Init(&hcan1, CAN1_Global_Call_Back);
+    CAN_Init(&hcan2, CAN2_Global_Call_Back);
+
+    //Chassis_Task_Init();
+    //Climbing_Task_Init();
+    //Clamping_Task_Init();
+
+    //UART_Init(&huart6, MAVLink_UART6_Rx_Call_Back, UART_BUFFER_SIZE);
 }

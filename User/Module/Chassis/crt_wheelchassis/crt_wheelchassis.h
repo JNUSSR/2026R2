@@ -211,7 +211,7 @@ protected :
     const float SQRT2_DIV_2 = 0.70710678f;
 
     // CAN标准ID映射
-    const uint32_t Chassis_Motor_StdId[4] = {0x201, 0x202, 0x203, 0x204};
+    const uint32_t Chassis_Motor_StdId[4] = {0x201, 0x202, 0x203, 0x204};//根据需要修改
 
     // 电机初始化ID映射
     const Enum_CAN_Motor_ID Chassis_Motor_Id_Enum[4] = {

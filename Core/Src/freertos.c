@@ -22,10 +22,15 @@
 #include "task.h"
 #include "main.h"
 #include "cmsis_os.h"
-#include "tsk_config_and_callback.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "tsk_config_and_callback.h"
+#include "ChassisTask.h"
+#include "ClimbingTask2.h"
+#include "DrawKFS_Task.h"
+#include "ClampingTask.h"
+#include "Uart_Task.h"
 
 /* USER CODE END Includes */
 
@@ -48,29 +53,57 @@
 /* USER CODE BEGIN Variables */
 
 /* USER CODE END Variables */
-/* Definitions for TaskJ4310 */
-osThreadId_t TaskJ4310Handle;
-const osThreadAttr_t TaskJ4310_attributes = {
-  .name = "TaskJ4310",
+/* Definitions for ChassisTask */
+osThreadId_t ChassisTaskHandle;
+const osThreadAttr_t ChassisTask_attributes = {
+  .name = "ChassisTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for MAVLinkTask */
+osThreadId_t MAVLinkTaskHandle;
+const osThreadAttr_t MAVLinkTask_attributes = {
+  .name = "MAVLinkTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for ClimbingTask */
+osThreadId_t ClimbingTaskHandle;
+const osThreadAttr_t ClimbingTask_attributes = {
+  .name = "ClimbingTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for DrawKFSTask */
+osThreadId_t DrawKFSTaskHandle;
+const osThreadAttr_t DrawKFSTask_attributes = {
+  .name = "DrawKFSTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for ClampingTask */
+osThreadId_t ClampingTaskHandle;
+const osThreadAttr_t ClampingTask_attributes = {
+  .name = "ClampingTask",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for Task3508 */
-osThreadId_t Task3508Handle;
-const osThreadAttr_t Task3508_attributes = {
-  .name = "Task3508",
-  .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+/* Definitions for uartSemaphore */
+osSemaphoreId_t uartSemaphoreHandle;
+const osSemaphoreAttr_t uartSemaphore_attributes = {
+  .name = "uartSemaphore"
 };
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-extern void J4310_Task(void *argument);
-extern void DJI_M3508_Task(void *argument);
+
 /* USER CODE END FunctionPrototypes */
 
-void StartTaskJ4310(void *argument);
-void StartTask3508(void *argument);
+void StartTaskChassis(void *argument);
+void StartTaskMAVLink(void *argument);
+void StartTaskClimbing(void *argument);
+void StartTaskDrawKFS(void *argument);
+void StartTaskClamping(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -91,6 +124,10 @@ void MX_FREERTOS_Init(void) {
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
+  /* Create the semaphores(s) */
+  /* creation of uartSemaphore */
+  uartSemaphoreHandle = osSemaphoreNew(1, 0, &uartSemaphore_attributes);
+
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
@@ -104,11 +141,20 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of TaskJ4310 */
-  TaskJ4310Handle = osThreadNew(StartTaskJ4310, NULL, &TaskJ4310_attributes);
+  /* creation of ChassisTask */
+  ChassisTaskHandle = osThreadNew(StartTaskChassis, NULL, &ChassisTask_attributes);
 
-  /* creation of Task3508 */
-  Task3508Handle = osThreadNew(StartTask3508, NULL, &Task3508_attributes);
+  /* creation of MAVLinkTask */
+  MAVLinkTaskHandle = osThreadNew(StartTaskMAVLink, NULL, &MAVLinkTask_attributes);
+
+  /* creation of ClimbingTask */
+  ClimbingTaskHandle = osThreadNew(StartTaskClimbing, NULL, &ClimbingTask_attributes);
+
+  /* creation of DrawKFSTask */
+  DrawKFSTaskHandle = osThreadNew(StartTaskDrawKFS, NULL, &DrawKFSTask_attributes);
+
+  /* creation of ClampingTask */
+  ClampingTaskHandle = osThreadNew(StartTaskClamping, NULL, &ClampingTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -120,41 +166,99 @@ void MX_FREERTOS_Init(void) {
 
 }
 
-/* USER CODE BEGIN Header_StartTaskJ4310 */
+/* USER CODE BEGIN Header_StartTaskChassis */
 /**
-  * @brief  Function implementing the TaskJ4310 thread.
+  * @brief  Function implementing the ChassisTask thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_StartTaskJ4310 */
-void StartTaskJ4310(void *argument)
+/* USER CODE END Header_StartTaskChassis */
+void StartTaskChassis(void *argument)
 {
-  /* USER CODE BEGIN StartTaskJ4310 */
-  /* 现在把任务循环移入到 API 实现中，直接调用一次作为任务入口 */
-  J4310_Task(argument);
+  /* USER CODE BEGIN StartTaskChassis */
+  Chassis_Task(argument);
+  /* Infinite loop */
   for(;;)
   {
-      osDelay(1);
+    osDelay(1);
   }
-  /* USER CODE END StartTaskJ4310 */
+  /* USER CODE END StartTaskChassis */
 }
 
-/* USER CODE BEGIN Header_StartTask3508 */
+/* USER CODE BEGIN Header_StartTaskMAVLink */
 /**
-* @brief Function implementing the Task3508 thread.
+* @brief Function implementing the MAVLinkTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartTask3508 */
-void StartTask3508(void *argument)
+/* USER CODE END Header_StartTaskMAVLink */
+void StartTaskMAVLink(void *argument)
 {
-  /* USER CODE BEGIN StartTask3508 */
-  DJI_M3508_Task(argument);
+  /* USER CODE BEGIN StartTaskMAVLink */
+  UartTask();
+  /* Infinite loop */
   for(;;)
   {
-      osDelay(1);
+    osDelay(1);
   }
-  /* USER CODE END StartTask3508 */
+  /* USER CODE END StartTaskMAVLink */
+}
+
+/* USER CODE BEGIN Header_StartTaskClimbing */
+/**
+* @brief Function implementing the ClimbingTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartTaskClimbing */
+void StartTaskClimbing(void *argument)
+{
+  /* USER CODE BEGIN StartTaskClimbing */
+  ClimbingTask();
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartTaskClimbing */
+}
+
+/* USER CODE BEGIN Header_StartTaskDrawKFS */
+/**
+* @brief Function implementing the DrawKFSTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartTaskDrawKFS */
+void StartTaskDrawKFS(void *argument)
+{
+  /* USER CODE BEGIN StartTaskDrawKFS */
+  DrawKFS_Task();
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartTaskDrawKFS */
+}
+
+/* USER CODE BEGIN Header_StartTaskClamping */
+/**
+* @brief Function implementing the ClampingTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartTaskClamping */
+void StartTaskClamping(void *argument)
+{
+  /* USER CODE BEGIN StartTaskClamping */
+  ClampingTask();
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartTaskClamping */
 }
 
 /* Private application code --------------------------------------------------*/

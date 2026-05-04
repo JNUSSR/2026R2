@@ -1,28 +1,28 @@
-# JNUSSR Template BSP
+# JNUSSR R2 Robot Firmware
 
-暨南大学 SSR 战队 ROBOCON BSP 模板工程。
+暨南大学 SSR 战队 ROBOCON 2026 赛季 R2 机器人固件仓库。
 
-本项目基于 robowalker_train 框架思路，融合 STM32CubeMX + CMake + FreeRTOS，面向 STM32F427 平台，作为队内通用板级支持包与任务开发基础。
+本项目面向 STM32F427 平台，采用 STM32CubeMX + CMake + FreeRTOS 的工程化流程，提供机器人主控固件、驱动层与任务层的完整实现。
 
-使用vscode需要清除旧路径的缓存，重新配置Cmake文件
+使用 VS Code 时建议清理旧路径缓存，并重新配置 CMake Presets。
 
-## 特性
+## 关键特性
 
 - MCU: STM32F427 系列
 - RTOS: FreeRTOS（Middlewares/Third_Party/FreeRTOS）
 - HAL: STM32F4xx HAL Driver
 - 构建系统: CMake + Ninja（兼容 GCC Arm Embedded 工具链）
-- 工程兼容: 同时保留 Keil MDK 工程目录，便于迁移与调试
-- 用户代码层: User 目录按算法、驱动、模块、任务分层组织
+- 分层结构: Core / Drivers / Middlewares / User / Protocol / Task
 
 ## 目录说明
 
 - Core: CubeMX 生成的核心启动与外设代码
 - Drivers: CMSIS 与 HAL 驱动
 - Middlewares: FreeRTOS 等中间件
-- User: 战队业务层代码（算法/驱动/模块/任务）
+- User: 算法/驱动/模块/任务
+- Protocol: 协议与工具（含 MAVLink 相关）
+- Task: 机器人业务任务
 - cmake: 工具链与 CubeMX CMake 适配脚本
-- MDK-ARM: Keil 工程与构建产物（历史兼容）
 
 ## 构建说明（CMake）
 
@@ -42,14 +42,13 @@ cmake --build --preset Debug
 
 ## 开发建议
 
-- 新业务代码优先放在 User 目录并按现有分层维护
+- 新业务代码优先放在 User/Task 目录并按现有分层维护
 - 尽量避免直接改动 CubeMX 自动生成代码区块
-- 通过 CMake 构建进行日常编译校验，Keil 用于下载与在线调试
+- 日常编译使用 CMake 构建，下载与在线调试可使用 Keil
 
-## 来源与用途
+## 参考
 
-- 框架参考: https://github.com/yssickjgd/robowalker_train.git
-- 用途: JNUSSR ROBOCON 竞赛 BSP 基础模板
+- 框架思路参考: https://github.com/yssickjgd/robowalker_train.git
 
 ## 许可证
 

@@ -41,6 +41,10 @@ typedef struct Struct_UART_Manage_Object
     UART_Call_Back Callback_Function;
 } Struct_UART_Manage_Object;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Exported variables --------------------------------------------------------*/
 
 extern UART_HandleTypeDef huart1;
@@ -59,10 +63,6 @@ extern Struct_UART_Manage_Object UART7_Manage_Object;
 extern Struct_UART_Manage_Object UART8_Manage_Object;
 
 /* Exported function declarations --------------------------------------------*/
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 void UART_Init(UART_HandleTypeDef *huart, UART_Call_Back Callback_Function, uint16_t Rx_Buffer_Length);
 

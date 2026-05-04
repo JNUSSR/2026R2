@@ -24,7 +24,7 @@ void Class_Chassis_Omni::Init()
     // PID初始化
    for (int i = 0; i < 4; i++)
     {
-        Chassis_Motor[i].PID_Omega.Init(450.0f, 279.3f, 0.0f, 0.0f, 10000.0f, 10000.0f); 
+        Chassis_Motor[i].PID_Omega.Init(450.0f, 279.93f, 0.0f, 0.0f, 10000.0f, 10000.0f); 
     }
     
     // 电机初始化
@@ -117,11 +117,11 @@ void Class_Chassis_Mecanum::Init()
     {
         if (i == 0 || i == 2) // 前左和后右轮
         {
-            Chassis_Motor[i].PID_Omega.Init(160.3f, 120.3f, 0.0f, 0.0f, 10000.0f, 12000.0f);
+            Chassis_Motor[i].PID_Omega.Init(450.0f, 279.93f, 0.0f, 0.0f, 10000.0f, 12000.0f);
         }
         else // 前右和后左轮
         {
-            Chassis_Motor[i].PID_Omega.Init(160.3f, 120.3f, 0.0f, 0.0f, 10000.0f, 12000.0f);
+            Chassis_Motor[i].PID_Omega.Init(450.0f, 279.93f, 0.0f, 0.0f, 10000.0f, 12000.0f);
         }    
     }
     

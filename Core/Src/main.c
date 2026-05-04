@@ -50,8 +50,6 @@ void MX_FREERTOS_Init(void);
 #include "dvc_serialplot.h"
 #include "dvc_motor.h"
 #include "dvc_motor_dm.h"
-#include "motor_dm_task.h"
-#include "motor_dji_task.h"
 
 /* USER CODE END Includes */
 
@@ -126,6 +124,7 @@ int main(void)
   MX_CAN1_Init();
   MX_USART2_UART_Init();
   MX_USART6_UART_Init();
+  MX_CAN2_Init();
   /* USER CODE BEGIN 2 */
 
   // 注册TIM14的回调函数用于系统时基
