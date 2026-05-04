@@ -38,10 +38,11 @@ const ArmStep DrawKFS[] = {
 
 bool drawkfs_flag = false;
 bool idle_flag = false;
-void CAN1_Motor_Call_Back(Struct_CAN_Rx_Buffer *Rx_Buffer) {
-    switch (Rx_Buffer->Header.StdId) {
-    }
-}
+
+// void CAN1_Motor_Call_Back(Struct_CAN_Rx_Buffer *Rx_Buffer) {
+//     switch (Rx_Buffer->Header.StdId) {
+//     }
+// }
 
 void DrawKFS_Task() {
     //BSP_Init(BSP_LED_1_ON | BSP_LED_8_ON);
@@ -90,7 +91,7 @@ void DrawKFS_Task() {
         Motor_Z.TIM_PID_PeriodElapsedCallback();
         Motor_X.TIM_PID_PeriodElapsedCallback();
         Motor_R.TIM_PID_PeriodElapsedCallback();
-        TIM_CAN_PeriodElapsedCallback();
+        //TIM_CAN_PeriodElapsedCallback();
         osDelay(1);
     }
 }

@@ -164,7 +164,7 @@ void TIM_CAN_PeriodElapsedCallback()
     CAN_Send_Data(&hcan1, 0x1ff, CAN1_0x1ff_Tx_Data, 8);
     CAN_Send_Data(&hcan1, 0x200, CAN1_0x200_Tx_Data, 8);
     // CAN_Send_Data(&hcan1, 0x2ff, CAN1_0x2ff_Tx_Data, 8);
-    CAN_Send_Data(&hcan1, 0x3fe, CAN1_0x3fe_Tx_Data, 8);
+    //CAN_Send_Data(&hcan1, 0x3fe, CAN1_0x3fe_Tx_Data, 8);
 
     // CAN2电机
     CAN_Send_Data(&hcan2, 0x1ff, CAN2_0x1ff_Tx_Data, 8);

@@ -104,7 +104,7 @@ void Chassis_Task(void* argument)
 		}
 
         // 通过CAN发送电机控制指令
-		TIM_CAN_PeriodElapsedCallback();
+		//TIM_CAN_PeriodElapsedCallback();
 
         // 1ms周期
 		osDelay(1);

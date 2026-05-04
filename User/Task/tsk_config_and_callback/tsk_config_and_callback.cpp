@@ -5,14 +5,16 @@
 
 #include "tsk_config_and_callback.h"
 
-#include "main.h"
+#include "ChassisTask.h"
+#include "ClampingTask.h"
+#include "climbingTask2.h"
 #include "drv_bsp.h"
 #include "drv_can.h"
+#include "drv_tim.h"
 #include "drv_uart.h"
+#include "main.h"
+#include "tim.h"
 #include "usart.h"
-#include "ChassisTask.h"
-#include "climbingTask2.h"
-#include "ClampingTask.h"
 
 extern "C" void Chassis_CAN_Rx_Dispatch(CAN_HandleTypeDef *hcan, Struct_CAN_Rx_Buffer *Rx_Buffer);
 
@@ -67,12 +69,16 @@ void CAN2_Global_Call_Back(Struct_CAN_Rx_Buffer *Rx_Buffer) {
     }
 }
 
+
+
 void Task_Init(void) {
     BSP_Init(BSP_DC24_LU_ON | BSP_DC24_LD_ON | BSP_DC24_RU_ON | BSP_DC24_RD_ON);
 
     CAN_Init(&hcan1, CAN1_Global_Call_Back);
     CAN_Init(&hcan2, CAN2_Global_Call_Back);
 
+    HAL_TIM_Base_Start_IT(&htim6);
+    TIM_Init(&htim6,TIM_CAN_PeriodElapsedCallback);
     //Chassis_Task_Init();
     //Climbing_Task_Init();
     //Clamping_Task_Init();

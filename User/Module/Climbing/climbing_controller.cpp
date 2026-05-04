@@ -473,7 +473,7 @@ void ClimbingController::ApplyGravityCompensationAndSend(void)
     ApplyMotorOutputWithComp(motor_lift_front_, target_comp_front, 0);
     ApplyMotorOutputWithComp(motor_lift_rear_, target_comp_rear, 2);
 
-    TIM_CAN_PeriodElapsedCallback();
+    //TIM_CAN_PeriodElapsedCallback();
 }
 
 void ClimbingController::Init(CAN_HandleTypeDef *hcan)

@@ -21,6 +21,7 @@
 #include "cmsis_os.h"
 #include "can.h"
 #include "dma.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -125,6 +126,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART6_UART_Init();
   MX_CAN2_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
 
   // 注册TIM14的回调函数用于系统时基
