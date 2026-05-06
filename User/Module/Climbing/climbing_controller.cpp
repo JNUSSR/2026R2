@@ -490,8 +490,6 @@ void ClimbingController::Init(CAN_HandleTypeDef *hcan)
     motor_wheel_l_.Init(hcan, CAN_Motor_ID_0x203, Control_Method_ANGLE);
     motor_wheel_r_.Init(hcan, CAN_Motor_ID_0x204, Control_Method_ANGLE);
 
-    Chassis_Task_Init();
-
     motor_lift_front_.PID_Omega.Init(PID_FRONT_OMEGA_KP_NORMAL, 5.0f, 0.0f, 0.0f, 10000.0f, 12000.0f);
     motor_lift_front_.PID_Angle.Init(PID_FRONT_ANGLE_KP_NORMAL, 0.5f, 0.0f, 0.0f, 10000.0f, 12000.0f);
 
