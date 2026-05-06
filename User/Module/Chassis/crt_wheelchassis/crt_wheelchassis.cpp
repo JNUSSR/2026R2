@@ -115,13 +115,17 @@ void Class_Chassis_Mecanum::Init()
     // PID初始化
    for (int i = 0; i < 4; i++)
     {
-        if (i == 0 || i == 2) // 前左和后右轮
+        if (i == 0) // 左前轮
         {
-            Chassis_Motor[i].PID_Omega.Init(450.0f, 279.93f, 0.0f, 0.0f, 10000.0f, 12000.0f);
+            Chassis_Motor[i].PID_Omega.Init(400.0f, 279.93f, 0.0f, 0.0f, 10000.0f, 12000.0f);
         }
-        else // 前右和后左轮
+        else if (i == 2) // 左后轮
         {
-            Chassis_Motor[i].PID_Omega.Init(450.0f, 279.93f, 0.0f, 0.0f, 10000.0f, 12000.0f);
+            Chassis_Motor[i].PID_Omega.Init(400.0f, 279.93f, 0.0f, 0.0f, 10000.0f, 12000.0f);
+        }
+        else // 右前轮和右后轮
+        {
+            Chassis_Motor[i].PID_Omega.Init(400.0f, 279.93f, 0.0f, 0.0f, 10000.0f, 12000.0f);
         }    
     }
     
@@ -183,18 +187,22 @@ void Class_Chassis_Mecanum::Kinematics_Inverse_Resolution()
     // 旋转解算系数 k = (L/2 + W/2)
     float k = (Chassis_L + Chassis_W) / 2;
 
+    float vx = Target_Velocity_Y;
+    float vy = Target_Velocity_X;
+    float vw = Target_Omega;
+
      // 标准X型麦克纳姆轮解算公式
     // 左前轮 (motor_chassis[0])
-    Target_Wheel_Omega[0] = (-(Target_Velocity_X - Target_Velocity_Y - Target_Omega * k)) / Wheel_Radius;
+    Target_Wheel_Omega[0] = (vx + vy + vw * k) / Wheel_Radius;
 
     // 右前轮 (motor_chassis[1])
-    Target_Wheel_Omega[1] = (-(Target_Velocity_X + Target_Velocity_Y + Target_Omega * k)) / Wheel_Radius;
+    Target_Wheel_Omega[1] = (-(vx - vy - vw * k)) / Wheel_Radius;
 
     // 左后轮 (motor_chassis[2])
-    Target_Wheel_Omega[2] = (Target_Velocity_X + Target_Velocity_Y - Target_Omega * k) / Wheel_Radius;
+    Target_Wheel_Omega[2] = (vx - vy + vw * k) / Wheel_Radius;
 
     // 右后轮 (motor_chassis[3])
-    Target_Wheel_Omega[3] = (Target_Velocity_X - Target_Velocity_Y + Target_Omega * k) / Wheel_Radius;
+    Target_Wheel_Omega[3] = (-vx - vy + vw * k) / Wheel_Radius;
 }
 
 

@@ -31,11 +31,11 @@
 // ==========================================
 //初始状态
 #define POS_FRONT_Init       movingmm_front(-220.0f)
-#define POS_REAR_Init        movingmm_rear(-10.0f)
+#define POS_REAR_Init        movingmm_rear(-30.0f)
 
 //上20cm台阶
 #define POS_FRONT_RETRACT_20cm    movingmm_front(-220.0f)
-#define POS_REAR_RETRACT_20cm     movingmm_rear(-10.0f)
+#define POS_REAR_RETRACT_20cm     movingmm_rear(-30.0f)
 
 #define POS_FRONT_TOUCH_20cm      movingmm_front(-200.0f)
 #define POS_REAR_TOUCH_20cm       movingmm_rear(0.0f)
@@ -54,9 +54,9 @@
 #define POS_REAR_LIFT_40cm        movingmm_rear(413.0f)
 
 #define POS_FRONT_FINAL_20cm movingmm_front(-220.0f)
-#define POS_REAR_FINAL_20cm  movingmm_rear(-10.0f)
+#define POS_REAR_FINAL_20cm  movingmm_rear(-30.0f)
 #define POS_FRONT_FINAL_40cm movingmm_front(-220.0f)
-#define POS_REAR_FINAL_40cm  movingmm_rear(-10.0f)
+#define POS_REAR_FINAL_40cm  movingmm_rear(-30.0f)
 
 //下20cm台阶
 // 下台阶：状态3 触地目标
@@ -177,7 +177,7 @@
 #define WAIT_TRIGGER         1000  // 等待底盘移动到位的时间窗口（自动流程专用） 
 #define TIME_TOUCH           500  // 触地时间
 #define TIME_LIFT            1500  // 顶升时间
-#define TIME_LIFT_REAR_DELAY 300   // 顶升阶段后脚延时启动
+#define TIME_LIFT_REAR_DELAY 270   // 顶升阶段后脚延时启动
 #define TIME_DRIVE           1200  // 平移时间
 #define TIME_RETRACT         2000  // 收腿时间
 
