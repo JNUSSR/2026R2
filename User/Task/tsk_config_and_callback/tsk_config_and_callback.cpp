@@ -72,7 +72,7 @@ void CAN2_Global_Call_Back(Struct_CAN_Rx_Buffer *Rx_Buffer) {
 
 
 void Task_Init(void) {
-    BSP_Init(BSP_DC24_LU_ON | BSP_DC24_LD_ON | BSP_DC24_RU_ON | BSP_DC24_RD_ON);
+    BSP_Init(BSP_DC24_LU_ON | BSP_DC24_LD_ON | BSP_DC24_RU_ON | BSP_DC24_RD_ON | BSP_LED_1_ON | BSP_LED_8_ON);
 
     CAN_Init(&hcan1, CAN1_Global_Call_Back);
     CAN_Init(&hcan2, CAN2_Global_Call_Back);
