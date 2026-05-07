@@ -101,40 +101,98 @@ private:
     float dt_;
 };
 
-typedef void (*ActionCallback)();
-
-struct ArmStep {
-    float target_z, duration_z;
-    float target_x, duration_x;
-    float target_r, duration_r;
-
-    ActionCallback custom_action;
+// 定义单个关节的动作指令
+struct JointCmd {
+    float target;
+    float duration;
 };
 
+// 带有模板参数 N 的动作步骤，N 代表关节数
+template <size_t N>
+struct ArmStep {
+    JointCmd cmds[N];
+    void (*custom_action)();
+};
+
+// 带有模板参数 N 的播放器类
+template <size_t N>
 class ArmSequencePlayer {
 public:
-    // 直接接收 PlannedJoint 引用
-    ArmSequencePlayer(PlannedJoint& joint_z,
-                      PlannedJoint& joint_x,
-                      PlannedJoint& joint_r)
-        : z_(joint_z), x_(joint_x), r_(joint_r), state_(IDLE), current_sequence_(nullptr) {}
+    // 变长参数模板构造函数，可以直接接收任意数量的 PlannedJoint&
+    template <typename... Joints>
+    ArmSequencePlayer(Joints&... joints)
+        : state_(IDLE), current_sequence_(nullptr), joints_{ &joints... }
+    {
+        // 编译期断言：确保传入的引用数量等于实例化的模板参数 N
+        static_assert(sizeof...(Joints) == N, "传入的关节数量与实例化模板的 N 不匹配!");
+    }
 
-    void Play(const ArmStep* sequence, uint16_t step_count);
-    void Stop();
-    bool IsPlaying() const;
-    void Update();
+    void Play(const ArmStep<N>* sequence, uint16_t step_count) {
+        current_sequence_ = sequence;
+        total_steps_ = step_count;
+        current_step_index_ = 0;
+        state_ = RUNNING_STEP;
+    }
+
+    void Stop() {
+        state_ = IDLE;
+    }
+
+    bool IsPlaying() const {
+        return state_ != IDLE;
+    }
+
+    void Update() {
+        if (state_ == IDLE) return;
+
+        if (state_ == RUNNING_STEP) {
+            const ArmStep<N>& step = current_sequence_[current_step_index_];
+
+            // 优先执行自定义动作
+            if (step.custom_action != nullptr) {
+                step.custom_action();
+            }
+
+            // 遍历并下发 N 个关节的指令
+            for (size_t i = 0; i < N; ++i) {
+                if (step.cmds[i].duration > 0.0f) {
+                    joints_[i]->Move(step.cmds[i].target, step.cmds[i].duration);
+                }
+            }
+
+            state_ = WAITING_STEP;
+        }
+        else if (state_ == WAITING_STEP) {
+            bool all_finished = true;
+            // 检查所有的轴是否都已经运动完毕
+            for (size_t i = 0; i < N; ++i) {
+                if (joints_[i]->IsMoving()) {
+                    all_finished = false;
+                    break;
+                }
+            }
+
+            if (all_finished) {
+                current_step_index_++;
+                if (current_step_index_ >= total_steps_) {
+                    state_ = IDLE; // 完成
+                } else {
+                    state_ = RUNNING_STEP; // 下一步
+                }
+            }
+        }
+    }
 
 private:
     enum State { IDLE, RUNNING_STEP, WAITING_STEP };
     State state_;
 
-    const ArmStep* current_sequence_;
+    const ArmStep<N>* current_sequence_;
     uint16_t total_steps_;
     uint16_t current_step_index_;
 
-    PlannedJoint& z_;
-    PlannedJoint& x_;
-    PlannedJoint& r_;
+    // 内部存放各个关节引用的指针数组
+    PlannedJoint* joints_[N];
 };
 
 #endif // TEST_FEEDBACK_ARM_H

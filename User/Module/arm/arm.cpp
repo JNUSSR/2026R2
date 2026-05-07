@@ -87,49 +87,49 @@ void PlannedJoint::Update() {
     joint_.Update(planner_.GetNextPosition(dt_));
 }
 
-void ArmSequencePlayer::Play(const ArmStep* sequence, uint16_t step_count) {
-    if (sequence == nullptr || step_count == 0) return;
-    current_sequence_ = sequence;
-    total_steps_ = step_count;
-    current_step_index_ = 0;
-    state_ = RUNNING_STEP;
-}
-
-void ArmSequencePlayer::Stop() {
-    state_ = IDLE;
-}
-
-bool ArmSequencePlayer::IsPlaying() const {
-    return state_ != IDLE;
-}
-
-void ArmSequencePlayer::Update() {
-    if (state_ == IDLE) return;
-
-    if (state_ == RUNNING_STEP) {
-        const ArmStep& step = current_sequence_[current_step_index_];
-
-        // 优先执行自定义动作 (例如 GPIO 控制、printf 打印等)
-        if (step.custom_action != nullptr) {
-            step.custom_action();
-        }
-
-        // 如果 duration > 0 才下发移动指令，否则保持原位不动
-        if (step.duration_z > 0.0f) z_.Move(step.target_z, step.duration_z);
-        if (step.duration_x > 0.0f) x_.Move(step.target_x, step.duration_x);
-        if (step.duration_r > 0.0f) r_.Move(step.target_r, step.duration_r);
-
-        state_ = WAITING_STEP;
-    }
-    else if (state_ == WAITING_STEP) {
-        // 检查这一步是否所有的轴都已经运动完毕
-        if (!z_.IsMoving() && !x_.IsMoving() && !r_.IsMoving()) {
-            current_step_index_++;
-            if (current_step_index_ >= total_steps_) {
-                state_ = IDLE; // 整个动作序列完成
-            } else {
-                state_ = RUNNING_STEP; // 继续下一步
-            }
-        }
-    }
-}
+// void ArmSequencePlayer::Play(const ArmStep* sequence, uint16_t step_count) {
+//     if (sequence == nullptr || step_count == 0) return;
+//     current_sequence_ = sequence;
+//     total_steps_ = step_count;
+//     current_step_index_ = 0;
+//     state_ = RUNNING_STEP;
+// }
+//
+// void ArmSequencePlayer::Stop() {
+//     state_ = IDLE;
+// }
+//
+// bool ArmSequencePlayer::IsPlaying() const {
+//     return state_ != IDLE;
+// }
+//
+// void ArmSequencePlayer::Update() {
+//     if (state_ == IDLE) return;
+//
+//     if (state_ == RUNNING_STEP) {
+//         const ArmStep& step = current_sequence_[current_step_index_];
+//
+//         // 优先执行自定义动作 (例如 GPIO 控制、printf 打印等)
+//         if (step.custom_action != nullptr) {
+//             step.custom_action();
+//         }
+//
+//         // 如果 duration > 0 才下发移动指令，否则保持原位不动
+//         if (step.duration_z > 0.0f) z_.Move(step.target_z, step.duration_z);
+//         if (step.duration_x > 0.0f) x_.Move(step.target_x, step.duration_x);
+//         if (step.duration_r > 0.0f) r_.Move(step.target_r, step.duration_r);
+//
+//         state_ = WAITING_STEP;
+//     }
+//     else if (state_ == WAITING_STEP) {
+//         // 检查这一步是否所有的轴都已经运动完毕
+//         if (!z_.IsMoving() && !x_.IsMoving() && !r_.IsMoving()) {
+//             current_step_index_++;
+//             if (current_step_index_ >= total_steps_) {
+//                 state_ = IDLE; // 整个动作序列完成
+//             } else {
+//                 state_ = RUNNING_STEP; // 继续下一步
+//             }
+//         }
+//     }
+// }
