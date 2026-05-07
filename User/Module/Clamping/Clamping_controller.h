@@ -12,12 +12,12 @@
 #define CLAMPING_PLAN_DT_S              (0.001f)
 #define CLAMPING_MOVE_DURATION_S        (0.3f)
 
-#define CLAMPING_PID_OMEGA_KP           (1300.0f)
-#define CLAMPING_PID_OMEGA_KI           (200.0f)
+#define CLAMPING_PID_OMEGA_KP           (1800.0f)
+#define CLAMPING_PID_OMEGA_KI           (500.0f)
 #define CLAMPING_PID_ANGLE_KP           (15.0f)
 #define CLAMPING_PID_ANGLE_KI           (0.0f)
-#define CLAMPING_PID_OMEGA_OUT_MAX      (3000.0f)
-#define CLAMPING_PID_OMEGA_I_OUT_MAX    (6000.0f)
+#define CLAMPING_PID_OMEGA_OUT_MAX      (5000.0f)
+#define CLAMPING_PID_OMEGA_I_OUT_MAX    (7000.0f)
 #define CLAMPING_PID_ANGLE_OUT_MAX      (10.0f)
 #define CLAMPING_PID_ANGLE_I_OUT_MAX    (15.0f)
 
