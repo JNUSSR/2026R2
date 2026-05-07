@@ -187,8 +187,8 @@ void Class_Chassis_Mecanum::Kinematics_Inverse_Resolution()
     // 旋转解算系数 k = (L/2 + W/2)
     float k = (Chassis_L + Chassis_W) / 2;
 
-    float vx = Target_Velocity_Y;
-    float vy = Target_Velocity_X;
+    float vx = Target_Velocity_X;
+    float vy = Target_Velocity_Y;
     float vw = Target_Omega;
 
      // 标准X型麦克纳姆轮解算公式
