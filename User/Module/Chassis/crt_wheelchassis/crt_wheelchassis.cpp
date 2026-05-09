@@ -117,15 +117,15 @@ void Class_Chassis_Mecanum::Init()
     {
         if (i == 0) // 左前轮
         {
-            Chassis_Motor[i].PID_Omega.Init(400.0f, 279.93f, 0.0f, 0.0f, 10000.0f, 12000.0f);
+            Chassis_Motor[i].PID_Omega.Init(700.0f, 380.0f, 0.0f, 0.0f, 10000.0f, 12000.0f);
         }
         else if (i == 2) // 左后轮
         {
-            Chassis_Motor[i].PID_Omega.Init(400.0f, 279.93f, 0.0f, 0.0f, 10000.0f, 12000.0f);
+            Chassis_Motor[i].PID_Omega.Init(700.0f, 380.0f, 0.0f, 0.0f, 10000.0f, 12000.0f);
         }
         else // 右前轮和右后轮
         {
-            Chassis_Motor[i].PID_Omega.Init(400.0f, 279.93f, 0.0f, 0.0f, 10000.0f, 12000.0f);
+            Chassis_Motor[i].PID_Omega.Init(700.0f, 380.0f, 0.0f, 0.0f, 10000.0f, 12000.0f);
         }    
     }
     
