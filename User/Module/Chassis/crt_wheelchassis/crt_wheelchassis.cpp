@@ -188,8 +188,8 @@ void Class_Chassis_Mecanum::Kinematics_Inverse_Resolution()
     float k = (Chassis_L + Chassis_W) / 2;
 
     float vx = Target_Velocity_X;
-    float vy = Target_Velocity_Y;
-    float vw = Target_Omega;
+    float vy = -Target_Velocity_Y; // -号符合右手坐标系约定，输入的Y正向为底盘左侧，而解算公式中Y正向为底盘右侧
+    float vw = -Target_Omega; // -号符合右手坐标系约定，输入的W正向为逆时针，而解算公式中W正向为顺时针
 
      // 标准X型麦克纳姆轮解算公式
     // 左前轮 (motor_chassis[0])
