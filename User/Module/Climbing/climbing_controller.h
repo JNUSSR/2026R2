@@ -4,6 +4,7 @@
 #include "stm32f4xx_hal.h"
 #include "dvc_motor.h"
 #include "alg_slope.h"
+#include "arm.h"
 
 // ==========================================
 // 0. 基础换算工具
@@ -31,17 +32,20 @@
 // ==========================================
 //初始状态
 #define POS_FRONT_Init       movingmm_front(-220.0f)
-#define POS_REAR_Init        movingmm_rear(-10.0f)
+#define POS_REAR_Init        movingmm_rear(-80.0f)
 
 //上20cm台阶
 #define POS_FRONT_RETRACT_20cm    movingmm_front(-220.0f)
-#define POS_REAR_RETRACT_20cm     movingmm_rear(-10.0f)
+#define POS_REAR_RETRACT_20cm     movingmm_rear(-80.0f)
 
-#define POS_FRONT_TOUCH_20cm      movingmm_front(-200.0f)
-#define POS_REAR_TOUCH_20cm       movingmm_rear(0.0f)
+#define POS_FRONT_TOUCH_20cm      movingmm_front(-200.0f) //-200
+#define POS_REAR_TOUCH_20cm       movingmm_rear(0.0f)     //0.0
 
-#define POS_FRONT_LIFT_20cm       movingmm_front(20.0f)
-#define POS_REAR_LIFT_20cm        movingmm_rear(220.0f)
+#define POS_FRONT_LIFT_20cm       movingmm_front(20.0f) //20
+#define POS_REAR_LIFT_20cm        movingmm_rear(220.0f) //220
+
+#define POS_FRONT_FINAL_20cm movingmm_front(-220.0f)
+#define POS_REAR_FINAL_20cm  movingmm_rear(-80.0f)
 
 //上40cm台阶
 #define POS_FRONT_RETRACT_40cm    movingmm_front(-420.0f)
@@ -53,19 +57,18 @@
 #define POS_FRONT_LIFT_40cm       movingmm_front(20.0f)
 #define POS_REAR_LIFT_40cm        movingmm_rear(413.0f)
 
-#define POS_FRONT_FINAL_20cm movingmm_front(-220.0f)
-#define POS_REAR_FINAL_20cm  movingmm_rear(-10.0f)
+
 #define POS_FRONT_FINAL_40cm movingmm_front(-220.0f)
-#define POS_REAR_FINAL_40cm  movingmm_rear(-10.0f)
+#define POS_REAR_FINAL_40cm  movingmm_rear(-80.0f)
 
 //下20cm台阶
 // 下台阶：状态3 触地目标
-#define DESCEND_FRONT_TOUCH_TARGET     movingmm_front(420.0f)
+#define DESCEND_FRONT_TOUCH_TARGET     movingmm_front(200.0f)
 #define DESCEND_REAR_TOUCH_TARGET      movingmm_rear(0.0f)
 
 // 下台阶：状态4 全局下降目标
-#define DESCEND_FRONT_GLOBAL_DOWN_TARGET movingmm_front(470.0f)
-#define DESCEND_REAR_GLOBAL_DOWN_TARGET  movingmm_rear(50.0f)
+#define DESCEND_FRONT_GLOBAL_DOWN_TARGET movingmm_front(240.0f)
+#define DESCEND_REAR_GLOBAL_DOWN_TARGET  movingmm_rear(40.0f)
 
 // 下台阶：状态6 抬起过渡目标
 // 前脚保持下层地面接触，后脚保持上层台阶对应高度
@@ -73,94 +76,70 @@
 #define DESCEND_REAR_RAISE_TARGET        movingmm_rear(-200.0f)
 
 // 下台阶：状态7 脱离台阶，轮子再前移 0.1m
-#define WHEEL_TRAVEL_DESCEND_RELEASE_M   (0.1f)
+#define WHEEL_TRAVEL_DESCEND_RELEASE_M   (0.18f)
 #define WHEEL_TRAVEL_DESCEND_RELEASE_RAD (WHEEL_TRAVEL_DESCEND_RELEASE_M / WHEEL_RADIUS_M)
 
 // ==========================================
 // 2. 速度、斜坡、时间参数
 // ==========================================
 
-//斜坡规划参数
-// 组A: STEP_SETUP / STEP_RETRACT
-#define FRONT_SLOPE_RPM_SETUP_RETRACT  (105.0f) //前腿的距离比较长 速度给大一些
-#define REAR_SLOPE_RPM_SETUP_RETRACT   (90.0f)
-// 组B: STEP_TOUCH_DOWN / STEP_GLOBAL_LIFT 抬升的速度需要大一点 抬升的距离相同，给相同速度
-#define FRONT_SLOPE_RPM_TOUCH_LIFT     (140.0f)
-#define REAR_SLOPE_RPM_TOUCH_LIFT      (140.0f)
-
-#define FRONT_SLOPE_STEP_SETUP_RETRACT (RC_RPM_TO_RADPS(FRONT_SLOPE_RPM_SETUP_RETRACT) / TASK_FREQ_HZ)
-#define REAR_SLOPE_STEP_SETUP_RETRACT  (RC_RPM_TO_RADPS(REAR_SLOPE_RPM_SETUP_RETRACT) / TASK_FREQ_HZ)
-#define FRONT_SLOPE_STEP_TOUCH_LIFT    (RC_RPM_TO_RADPS(FRONT_SLOPE_RPM_TOUCH_LIFT) / TASK_FREQ_HZ)
-#define REAR_SLOPE_STEP_TOUCH_LIFT     (RC_RPM_TO_RADPS(REAR_SLOPE_RPM_TOUCH_LIFT) / TASK_FREQ_HZ)
-
-// 下台阶斜坡组A（状态1/2，normal PID）
-#define FRONT_SLOPE_RPM_DESC_G1        (95.0f)
-#define REAR_SLOPE_RPM_DESC_G1         (95.0f)
-#define FRONT_SLOPE_STEP_DESC_G1       (RC_RPM_TO_RADPS(FRONT_SLOPE_RPM_DESC_G1) / TASK_FREQ_HZ)
-#define REAR_SLOPE_STEP_DESC_G1        (RC_RPM_TO_RADPS(REAR_SLOPE_RPM_DESC_G1) / TASK_FREQ_HZ)
-
-// 下台阶斜坡组B（状态3/4/5，lift PID）
-#define FRONT_SLOPE_RPM_DESC_G2        (130.0f)
-#define REAR_SLOPE_RPM_DESC_G2         (130.0f)
-#define FRONT_SLOPE_STEP_DESC_G2       (RC_RPM_TO_RADPS(FRONT_SLOPE_RPM_DESC_G2) / TASK_FREQ_HZ)
-#define REAR_SLOPE_STEP_DESC_G2        (RC_RPM_TO_RADPS(REAR_SLOPE_RPM_DESC_G2) / TASK_FREQ_HZ)
-
 // 轮子角度模式：距离->角度（rad）
 //上台阶
 #define WHEEL_RADIUS_M                MM_TO_M(50.0f)
-#define WHEEL_TRAVEL_UP_M             (0.6f)
+#define WHEEL_TRAVEL_UP_M             (0.63f)
 #define WHEEL_TRAVEL_UP_RAD           (WHEEL_TRAVEL_UP_M / WHEEL_RADIUS_M)
 //下台阶
-#define WHEEL_TRAVEL_DESCEND_M        (0.6f)
+#define WHEEL_TRAVEL_DESCEND_M        (0.63f)
 #define WHEEL_TRAVEL_DESCEND_RAD      (WHEEL_TRAVEL_DESCEND_M / WHEEL_RADIUS_M)
-#define WHEEL_ANGLE_DONE_TOL_RAD      (0.25f) //轮子角度到位容忍度 即误差到某个值时认为轮子已经到位
+//#define WHEEL_ANGLE_DONE_TOL_RAD      (0.25f) //轮子角度到位容忍度 即误差到某个值时认为轮子已经到位
 
 // 轮子角度斜坡
-#define WHEEL_SLOPE_RPM_UP            (120.0f) //up
+#define WHEEL_SLOPE_RPM_UP            (60.0f) //up
 #define WHEEL_SLOPE_RPM_DESCEND       (50.0f) //descend
 #define WHEEL_SLOPE_STEP_UP           (RC_RPM_TO_RADPS(WHEEL_SLOPE_RPM_UP) / TASK_FREQ_HZ)
 #define WHEEL_SLOPE_STEP_DESCEND      (RC_RPM_TO_RADPS(WHEEL_SLOPE_RPM_DESCEND) / TASK_FREQ_HZ)
 
 // 轮子角度模式 PID
-#define PID_WHEEL_OMEGA_KP            (85.3f)
-#define PID_WHEEL_OMEGA_KI            (10.3f)
-#define PID_WHEEL_ANGLE_KP            (30.0f)
-#define PID_WHEEL_ANGLE_KI            (1.0f)
+#define PID_WHEEL_OMEGA_KP            (450.0f)
+#define PID_WHEEL_OMEGA_KI            (200.0f)
+#define PID_WHEEL_ANGLE_KP            (10.0f)
+#define PID_WHEEL_ANGLE_KI            (0.0f)
+#define WHEEL_CREEP_OMEGA_RADPS       (0.3f)
 
 #define SETUP_TEST_REAR_DIR          (1.0f)
 #define SETUP_TEST_REAR_COMP         (2200.0f)
 
 
 // 动态PID参数（按工况切换）
-#define PID_FRONT_OMEGA_KP_NORMAL   (80.5f) //正常前轮P
-#define PID_FRONT_ANGLE_KP_NORMAL   (40.8f)
-#define PID_REAR_OMEGA_KP_NORMAL    (85.0f) //正常后轮P
-#define PID_REAR_ANGLE_KP_NORMAL    (50.0f)
-#define PID_REAR_OMEGA_KI_NORMAL    (5.0f) //正常后轮I
-#define PID_REAR_ANGLE_KI_NORMAL    (0.5f)
+#define PID_FRONT_OMEGA_KP_NORMAL   (138.5f) //正常前轮P
+#define PID_FRONT_ANGLE_KP_NORMAL   (70.8f)
+#define PID_REAR_OMEGA_KP_NORMAL    (167.0f) //正常后轮P
+#define PID_REAR_ANGLE_KP_NORMAL    (85.0f)
+#define PID_REAR_OMEGA_KI_NORMAL    (10.0f) //正常后轮I
+#define PID_REAR_ANGLE_KI_NORMAL    (1.0f)
 
-#define PID_FRONT_OMEGA_KP_LIFT     (135.0f) //抬升前轮P
-#define PID_FRONT_ANGLE_KP_LIFT     (75.0f)
-#define PID_REAR_OMEGA_KP_LIFT      (165.0f) //抬升后轮P
-#define PID_REAR_ANGLE_KP_LIFT      (96.0f)
-#define PID_REAR_OMEGA_KI_LIFT      (8.0f) //抬升后轮I
-#define PID_REAR_ANGLE_KI_LIFT      (0.8f)
+#define PID_FRONT_OMEGA_KP_LIFT     (305.0f) //抬升前轮P
+#define PID_FRONT_ANGLE_KP_LIFT     (140.0f)
+#define PID_REAR_OMEGA_KP_LIFT      (345.0f) //抬升后轮P
+#define PID_REAR_ANGLE_KP_LIFT      (115.0f)
+#define PID_REAR_OMEGA_KI_LIFT      (10.0f) //抬升后轮I
+#define PID_REAR_ANGLE_KI_LIFT      (1.0f)
 
 // --- 上台阶时间参数 ---
-#define TIME_SETUP           500  // 给2秒让它缩腿
-#define TIME_TOUCH           500  // 触地时间
+#define TIME_SETUP           1500  // 给2秒让它缩腿
+#define TIME_TOUCH           800  // 触地时间
 #define TIME_LIFT            1500  // 顶升时间
 #define TIME_LIFT_REAR_DELAY 100   // 顶升阶段后脚延时启动
-#define TIME_DRIVE           1200  // 平移时间
-#define TIME_RETRACT         2000  // 收腿时间
+#define TIME_DRIVE           3100  // 平移时间
+#define TIME_RETRACT         1800  // 收腿时间
 
 // --- 下台阶时间参数 ---
-#define TIME_DESC_SETUP      500
-#define TIME_DESC_TOUCH      2000  // 下台阶：状态3 触地时间
+#define TIME_DESC_SETUP      1500
+#define TIME_DESC_TOUCH      1500  // 下台阶：状态3 触地时间
 #define TIME_DESC_GLOBAL_DOWN  1000 // 下台阶：状态4 全局下降时间
-#define DESCEND_DRIVE_TIME_MS          1800 // 下台阶：状态5 平移时间（左右轮速度环）
-#define TIME_DESC_RAISE      1500 // 下台阶：状态6 抬升时间
-#define TIME_DESC_RELEASE    500 // 下台阶：状态7 脱离时间
+#define DESCEND_DRIVE_TIME_MS  3100 // 下台阶：状态5 平移时间
+#define TIME_DESC_RAISE      2500 // 下台阶：状态6 抬升时间
+#define TIME_DESC_RELEASE    3000 // 下台阶：状态7 脱离时间
 
 // ==========================================
 // 3. 状态定义
@@ -189,6 +168,9 @@ typedef enum {
     CLIMB_UP_MODE_40CM
 } ClimbUpMode_e;
 
+#endif // TEST_FEEDBACK_CLIMBING_CONTROLLER_H
+
+
 class ClimbingController {
 private:
     // ===== 状态变量 =====
@@ -201,10 +183,10 @@ private:
     Class_Motor_C620 motor_wheel_l_;
     Class_Motor_C620 motor_wheel_r_;
 
-    // ===== 斜坡规划器 =====
-    Class_Slope slope_front_pos_;
-    Class_Slope slope_rear_pos_;
-    Class_Slope slope_wheel_l_angle_;
+    // ===== 前后腿用五次多项式 两个轮子用斜坡规划器 =====
+    QuinticPlanner planner_front_pos_{0.0f};
+    QuinticPlanner planner_rear_pos_{0.0f};
+    Class_Slope slope_wheel_l_angle_; // 轮子易打滑，保留斜坡模式
     Class_Slope slope_wheel_r_angle_;
 
     // ===== 运行时数据 =====
@@ -217,6 +199,7 @@ private:
     float wheel_target_angle_r_;
     uint8_t is_lift_pid_mode_;
     ClimbingState_e prev_climb_state_;
+    uint8_t rear_lift_delayed_flag_;
 
     // ===== 自动流程相关 =====
     uint8_t auto_running_;
@@ -224,6 +207,7 @@ private:
     uint8_t descend_mode_;
     uint8_t chassis_external_control_;
     uint8_t init_pose_active_;
+    uint8_t init_pose_planned_;
     ClimbUpMode_e up_mode_;
 
     // ===== 内部控制流程 =====
@@ -241,10 +225,25 @@ private:
     bool TryTimeTransition(uint32_t now, uint32_t delay_ms, ClimbingState_e next_state);
 public:
     ClimbingController();
+    
+    //调试接口
+    float GetFrontTargetAngle(void) { return motor_lift_front_.Get_Target_Angle(); }
+    float GetFrontNowAngle(void) { return motor_lift_front_.Get_Now_Angle(); }
+    float GetFrontOut(void) { return motor_lift_front_.Get_Out(); }
+
+    float GetRearTargetAngle(void) { return motor_lift_rear_.Get_Target_Angle(); }
+    float GetRearNowAngle(void) { return motor_lift_rear_.Get_Now_Angle(); }
+    float GetRearOut(void) { return motor_lift_rear_.Get_Out(); }
+
+    float GetWheelLTargetAngle(void) { return motor_wheel_l_.Get_Target_Angle(); }
+    float GetWheelLNowAngle(void) { return motor_wheel_l_.Get_Now_Angle(); }
+    float GetWheelRTargetAngle(void) { return motor_wheel_r_.Get_Target_Angle(); }
+    float GetWheelRNowAngle(void) { return motor_wheel_r_.Get_Now_Angle(); }
+
+    ClimbingState_e GetState(void) { return climb_state_; }
 
     // 初始化电机/斜坡/PID
     void Init(CAN_HandleTypeDef *hcan);
-    // 1ms 主控制入口: 目标更新 + PID + 补偿 + 发送
     void TaskEntry1ms(void);
     // 1ms 自动流程推进器: 仅切状态
     void AutoTask1ms(void);
@@ -269,5 +268,3 @@ public:
     // 底盘外部接管开关: 1 外部接管, 0 状态机控制
     void SetChassisExternalControl(uint8_t enable);
 };
-
-#endif // TEST_FEEDBACK_CLIMBING_CONTROLLER_H
