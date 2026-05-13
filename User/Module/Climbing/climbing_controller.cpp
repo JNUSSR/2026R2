@@ -120,19 +120,6 @@ void ClimbingController::HandleStateTransition(uint32_t current_time, uint8_t st
             planner_front_pos_.Plan(front_now, start_pos_front_ + DESCEND_FRONT_RAISE_TARGET, TIME_DESC_RAISE / 1000.0f);
             planner_rear_pos_.Plan(rear_now, start_pos_rear_ + DESCEND_REAR_RAISE_TARGET, TIME_DESC_RAISE / 1000.0f);
             break;
-
-        case STEP_DESCEND_RELEASE:
-            planner_front_pos_.Plan(front_now, start_pos_front_ + DESCEND_FRONT_RAISE_TARGET, TIME_DESC_RELEASE / 1000.0f); // 保持举起姿势
-            planner_rear_pos_.Plan(rear_now, start_pos_rear_ + DESCEND_REAR_RAISE_TARGET, TIME_DESC_RELEASE / 1000.0f);
-            wheel_target_angle_l_ = wheel_start_l + WHEEL_TRAVEL_DESCEND_RELEASE_RAD;
-            wheel_target_angle_r_ = wheel_start_r - WHEEL_TRAVEL_DESCEND_RELEASE_RAD;
-            break;
-            
-        case STEP_DESCEND_DONE:
-            planner_front_pos_.Plan(front_now, start_pos_front_ + POS_FRONT_Init, 1.0f);
-            planner_rear_pos_.Plan(rear_now, start_pos_rear_ + POS_REAR_Init, 1.0f);
-            break;
-
         default:
             break;
     }
@@ -173,15 +160,6 @@ bool ClimbingController::TryTimeTransition(uint32_t now, uint32_t delay_ms, Clim
     return false;
 }
 
-
-// uint8_t ClimbingController::IsWheelAngleDone(void)
-// {
-//     // 判断左右轮是否到达目标角(带容差)
-//     float err_l = wheel_target_angle_l_ - motor_wheel_l_.Get_Now_Angle();
-//     float err_r = wheel_target_angle_r_ - motor_wheel_r_.Get_Now_Angle();
-//     return (Math_Abs(err_l) <= WHEEL_ANGLE_DONE_TOL_RAD && Math_Abs(err_r) <= WHEEL_ANGLE_DONE_TOL_RAD);
-// }
-
 void ClimbingController::SetLiftPidMode(uint8_t enable_lift)
 {
     // 如果目标模式与当前模式一致，直接返回，避免重复设置
@@ -219,7 +197,7 @@ void ClimbingController::SetWheelSlopeStep(float wheel_step)
 void ClimbingController::UpdatePidAndSlopeByState(void)
 {
     // 1. 轮子斜坡：仅取决于当前是上台阶还是下台阶大类
-    uint8_t is_descend_state = (climb_state_ >= STEP_DESCEND_SETUP && climb_state_ <= STEP_DESCEND_DONE);
+   uint8_t is_descend_state = (climb_state_ >= STEP_DESCEND_SETUP && climb_state_ <= STEP_DESCEND_RAISE);
     SetWheelSlopeStep(is_descend_state ? WHEEL_SLOPE_STEP_DESCEND : WHEEL_SLOPE_STEP_UP);
 
     // 2. 腿部斜坡与 PID 模式：按具体状态精确映射
@@ -474,17 +452,11 @@ void ClimbingController::AutoTask1ms(void)
         TryTimeTransition(now, DESCEND_DRIVE_TIME_MS, STEP_DESCEND_RAISE);
         break;
     case STEP_DESCEND_RAISE:
-        TryTimeTransition(now, TIME_DESC_RAISE, STEP_DESCEND_RELEASE);
-        break;
-    case STEP_DESCEND_RELEASE:
-        if (TryTimeTransition(now, TIME_DESC_RELEASE, STEP_DESCEND_DONE))
-        {
-            auto_running_ = 0; // 流程结束
+        // 达到时间后，手动检查计时器，仅停止自动流程，不切换状态
+        if ((now - auto_state_enter_tick_) >= TIME_DESC_RAISE) {
+            auto_running_ = 0; // 核心：停止自动状态机推进
+            // descend_mode_ = 0; // 根据你的需求决定是否重置模式标志位
         }
-        break;
-    case STEP_DESCEND_DONE:
-        auto_running_ = 0;
-        descend_mode_ = 0;
         break;
 
     // ---------- 上台阶自动流程 ----------
@@ -546,76 +518,74 @@ void ClimbingController::TaskEntry1ms(void)
     RunLiftAndWheelControl();
 }
 
-//vofa调试接口
-void ClimbingController::ManualNext(void)
-{
-    init_pose_active_ = 0;
-    auto_running_ = 0;
-    descend_mode_ = 0;
-    state_tick_ = HAL_GetTick();
+// //vofa调试接口
+// void ClimbingController::ManualNext(void)
+// {
+//     init_pose_active_ = 0;
+//     auto_running_ = 0;
+//     descend_mode_ = 0;
+//     state_tick_ = HAL_GetTick();
 
-    switch (climb_state_)
-    {
-    case STEP_IDLE: climb_state_ = STEP_SETUP; break;
-    case STEP_SETUP: climb_state_ = STEP_TOUCH_DOWN; break;
-    case STEP_TOUCH_DOWN: climb_state_ = STEP_GLOBAL_LIFT; break;
-    case STEP_GLOBAL_LIFT: climb_state_ = STEP_DRIVE_FWD; break;
-    case STEP_DRIVE_FWD: climb_state_ = STEP_RETRACT; break;
-    case STEP_RETRACT: climb_state_ = STEP_DONE; break;
-    case STEP_DONE: climb_state_ = STEP_IDLE; break;
-    default: climb_state_ = STEP_IDLE; break;
-    }
-}
+//     switch (climb_state_)
+//     {
+//     case STEP_IDLE: climb_state_ = STEP_SETUP; break;
+//     case STEP_SETUP: climb_state_ = STEP_TOUCH_DOWN; break;
+//     case STEP_TOUCH_DOWN: climb_state_ = STEP_GLOBAL_LIFT; break;
+//     case STEP_GLOBAL_LIFT: climb_state_ = STEP_DRIVE_FWD; break;
+//     case STEP_DRIVE_FWD: climb_state_ = STEP_RETRACT; break;
+//     case STEP_RETRACT: climb_state_ = STEP_DONE; break;
+//     case STEP_DONE: climb_state_ = STEP_IDLE; break;
+//     default: climb_state_ = STEP_IDLE; break;
+//     }
+// }
 
-//vofa调试接口
-void ClimbingController::EmergencyStop(void)
-{
-    // 急停: 清空输出并回到 IDLE
-    init_pose_active_ = 0;
-    auto_running_ = 0;
-    descend_mode_ = 0;
-    climb_state_ = STEP_IDLE;
+// //vofa调试接口
+// void ClimbingController::EmergencyStop(void)
+// {
+//     // 急停: 清空输出并回到 IDLE
+//     init_pose_active_ = 0;
+//     auto_running_ = 0;
+//     descend_mode_ = 0;
+//     climb_state_ = STEP_IDLE;
 
-    motor_lift_front_.Set_Out(0.0f);
-    motor_lift_rear_.Set_Out(0.0f);
-    motor_wheel_l_.Set_Out(0.0f);
-    motor_wheel_r_.Set_Out(0.0f);
-    // 强行锁住轨迹在此时的实际位置
-    planner_front_pos_.ForceSetPosition(motor_lift_front_.Get_Now_Angle());
-    planner_rear_pos_.ForceSetPosition(motor_lift_rear_.Get_Now_Angle());
-    motor_wheel_l_.Set_Target_Angle(motor_wheel_l_.Get_Now_Angle());
-    motor_wheel_r_.Set_Target_Angle(motor_wheel_r_.Get_Now_Angle());
-}
+//     motor_lift_front_.Set_Out(0.0f);
+//     motor_lift_rear_.Set_Out(0.0f);
+//     motor_wheel_l_.Set_Out(0.0f);
+//     motor_wheel_r_.Set_Out(0.0f);
+//     // 强行锁住轨迹在此时的实际位置
+//     planner_front_pos_.ForceSetPosition(motor_lift_front_.Get_Now_Angle());
+//     planner_rear_pos_.ForceSetPosition(motor_lift_rear_.Get_Now_Angle());
+//     motor_wheel_l_.Set_Target_Angle(motor_wheel_l_.Get_Now_Angle());
+//     motor_wheel_r_.Set_Target_Angle(motor_wheel_r_.Get_Now_Angle());
+// }
 
-//vofa调试接口
-void ClimbingController::DescendManualNext(void)
-{
-    init_pose_active_ = 0;
-    auto_running_ = 0;
-    descend_mode_ = 1;
-    state_tick_ = HAL_GetTick();
+// //vofa调试接口
+// void ClimbingController::DescendManualNext(void)
+// {
+//     init_pose_active_ = 0;
+//     auto_running_ = 0;
+//     descend_mode_ = 1;
+//     state_tick_ = HAL_GetTick();
 
-    if (climb_state_ < STEP_DESCEND_SETUP || climb_state_ > STEP_DESCEND_DONE) {
-        climb_state_ = STEP_DESCEND_SETUP;
-        return;
-    }
+//     if (climb_state_ < STEP_DESCEND_SETUP || climb_state_ > STEP_DESCEND_RAISE) {
+//         climb_state_ = STEP_DESCEND_SETUP;
+//         return;
+//     }
 
-    switch (climb_state_)
-    {
-    case STEP_DESCEND_SETUP:
-        desc_start_pos_front_ = motor_lift_front_.Get_Now_Angle();
-        desc_start_pos_rear_ = motor_lift_rear_.Get_Now_Angle();
-        climb_state_ = STEP_DESCEND_TOUCH;
-        break;
-    case STEP_DESCEND_TOUCH: climb_state_ = STEP_DESCEND_GLOBAL_DOWN; break;
-    case STEP_DESCEND_GLOBAL_DOWN: climb_state_ = STEP_DESCEND_DRIVE; break;
-    case STEP_DESCEND_DRIVE: climb_state_ = STEP_DESCEND_RAISE; break;
-    case STEP_DESCEND_RAISE: climb_state_ = STEP_DESCEND_RELEASE; break;
-    case STEP_DESCEND_RELEASE: climb_state_ = STEP_DESCEND_DONE; break;
-    case STEP_DESCEND_DONE:
-    default:
-        climb_state_ = STEP_IDLE;
-        descend_mode_ = 0;
-        break;
-    }
-}
+//     switch (climb_state_)
+//     {
+//     case STEP_DESCEND_SETUP:
+//         desc_start_pos_front_ = motor_lift_front_.Get_Now_Angle();
+//         desc_start_pos_rear_ = motor_lift_rear_.Get_Now_Angle();
+//         climb_state_ = STEP_DESCEND_TOUCH;
+//         break;
+//     case STEP_DESCEND_TOUCH: climb_state_ = STEP_DESCEND_GLOBAL_DOWN; break;
+//     case STEP_DESCEND_GLOBAL_DOWN: climb_state_ = STEP_DESCEND_DRIVE; break;
+//     case STEP_DESCEND_DRIVE: climb_state_ = STEP_DESCEND_RAISE; break;
+//     case STEP_DESCEND_RAISE: 
+//     default:
+//         climb_state_ = STEP_IDLE;
+//         descend_mode_ = 0;
+//         break;
+//     }
+// }

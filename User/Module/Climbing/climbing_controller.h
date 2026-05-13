@@ -73,11 +73,11 @@
 // 下台阶：状态6 抬起过渡目标
 // 前脚保持下层地面接触，后脚保持上层台阶对应高度
 #define DESCEND_FRONT_RAISE_TARGET       movingmm_front(0.0f)
-#define DESCEND_REAR_RAISE_TARGET        movingmm_rear(-200.0f)
+#define DESCEND_REAR_RAISE_TARGET        movingmm_rear(-210.0f)
 
 // 下台阶：状态7 脱离台阶，轮子再前移 0.1m
-#define WHEEL_TRAVEL_DESCEND_RELEASE_M   (0.18f)
-#define WHEEL_TRAVEL_DESCEND_RELEASE_RAD (WHEEL_TRAVEL_DESCEND_RELEASE_M / WHEEL_RADIUS_M)
+// #define WHEEL_TRAVEL_DESCEND_RELEASE_M   (0.18f)
+// #define WHEEL_TRAVEL_DESCEND_RELEASE_RAD (WHEEL_TRAVEL_DESCEND_RELEASE_M / WHEEL_RADIUS_M)
 
 // ==========================================
 // 2. 速度、斜坡、时间参数
@@ -94,8 +94,8 @@
 //#define WHEEL_ANGLE_DONE_TOL_RAD      (0.25f) //轮子角度到位容忍度 即误差到某个值时认为轮子已经到位
 
 // 轮子角度斜坡
-#define WHEEL_SLOPE_RPM_UP            (60.0f) //up
-#define WHEEL_SLOPE_RPM_DESCEND       (50.0f) //descend
+#define WHEEL_SLOPE_RPM_UP            (85.0f) //up
+#define WHEEL_SLOPE_RPM_DESCEND       (70.0f) //descend
 #define WHEEL_SLOPE_STEP_UP           (RC_RPM_TO_RADPS(WHEEL_SLOPE_RPM_UP) / TASK_FREQ_HZ)
 #define WHEEL_SLOPE_STEP_DESCEND      (RC_RPM_TO_RADPS(WHEEL_SLOPE_RPM_DESCEND) / TASK_FREQ_HZ)
 
@@ -127,19 +127,19 @@
 
 // --- 上台阶时间参数 ---
 #define TIME_SETUP           1500  // 给2秒让它缩腿
-#define TIME_TOUCH           800  // 触地时间
+#define TIME_TOUCH           500  // 触地时间
 #define TIME_LIFT            1500  // 顶升时间
 #define TIME_LIFT_REAR_DELAY 100   // 顶升阶段后脚延时启动
-#define TIME_DRIVE           3100  // 平移时间
-#define TIME_RETRACT         1800  // 收腿时间
+#define TIME_DRIVE           2000  // 平移时间
+#define TIME_RETRACT         1500  // 收腿时间
 
 // --- 下台阶时间参数 ---
 #define TIME_DESC_SETUP      1500
 #define TIME_DESC_TOUCH      1500  // 下台阶：状态3 触地时间
 #define TIME_DESC_GLOBAL_DOWN  1000 // 下台阶：状态4 全局下降时间
-#define DESCEND_DRIVE_TIME_MS  3100 // 下台阶：状态5 平移时间
-#define TIME_DESC_RAISE      2500 // 下台阶：状态6 抬升时间
-#define TIME_DESC_RELEASE    3000 // 下台阶：状态7 脱离时间
+#define DESCEND_DRIVE_TIME_MS  2000 // 下台阶：状态5 平移时间
+#define TIME_DESC_RAISE      2000 // 下台阶：状态6 抬升时间
+// #define TIME_DESC_RELEASE    3000 // 下台阶：状态7 脱离时间
 
 // ==========================================
 // 3. 状态定义
@@ -159,8 +159,8 @@ typedef enum {
     STEP_DESCEND_GLOBAL_DOWN, // 下台阶: 全局下降
     STEP_DESCEND_DRIVE,       // 下台阶: 轮子平移
     STEP_DESCEND_RAISE,       // 下台阶: 抬起
-    STEP_DESCEND_RELEASE,     // 下台阶: 轮子前移脱离台阶
-    STEP_DESCEND_DONE         // 下台阶完成
+    // STEP_DESCEND_RELEASE,     // 下台阶: 轮子前移脱离台阶
+    // STEP_DESCEND_DONE         // 下台阶完成
 } ClimbingState_e;
 
 typedef enum {
@@ -213,13 +213,11 @@ private:
     // ===== 内部控制流程 =====
     void ApplyMotorOutputWithComp(Class_Motor_C620 &motor, float comp, uint8_t can_byte_index);
     void HandleStateTransition(uint32_t current_time, uint8_t state_changed);
-    uint8_t IsWheelAngleDone(void);
     void RecordSoftZero(void); //记录上电软零点
     void UpdatePidAndSlopeByState(void);
     void UpdateStateTargets(uint32_t current_time);
     void RunLiftAndWheelControl(void);
     void SetLiftPidMode(uint8_t enable_lift);
-    void SetLegSlopeStep(float front_step, float rear_step);
     void SetWheelSlopeStep(float wheel_step);
     //时间延时状态跳转辅助函数
     bool TryTimeTransition(uint32_t now, uint32_t delay_ms, ClimbingState_e next_state);
