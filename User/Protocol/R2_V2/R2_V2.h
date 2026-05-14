@@ -10,7 +10,7 @@
     #error Wrong include order: MAVLINK_R2_V2.H MUST NOT BE DIRECTLY USED. Include mavlink.h from the same directory instead or set ALL AND EVERY defines from MAVLINK.H manually accordingly, including the #define MAVLINK_H call.
 #endif
 
-#define MAVLINK_R2_V2_XML_HASH -53279337908117539
+#define MAVLINK_R2_V2_XML_HASH -7211136770143303166
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,7 +23,7 @@ extern "C" {
 #endif
 
 #ifndef MAVLINK_MESSAGE_CRCS
-#define MAVLINK_MESSAGE_CRCS {{200, 230, 1, 1, 0, 0, 0}, {201, 211, 12, 12, 0, 0, 0}, {202, 132, 1, 1, 0, 0, 0}, {203, 109, 1, 1, 0, 0, 0}}
+#define MAVLINK_MESSAGE_CRCS {{200, 230, 1, 1, 0, 0, 0}, {201, 211, 12, 12, 0, 0, 0}, {202, 132, 1, 1, 0, 0, 0}, {203, 109, 1, 1, 0, 0, 0}, {204, 153, 4, 4, 0, 0, 0}}
 #endif
 
 #include "../protocol.h"
@@ -87,14 +87,15 @@ typedef enum CLAMPING_CMD_TYPE
 #include "./mavlink_msg_chassis_velocity_cmd.h"
 #include "./mavlink_msg_climbing_cmd.h"
 #include "./mavlink_msg_clamping_cmd.h"
+#include "./mavlink_msg_clamping_cmd_ext.h"
 
 // base include
 
 
 
 #if MAVLINK_R2_V2_XML_HASH == MAVLINK_PRIMARY_XML_HASH
-# define MAVLINK_MESSAGE_INFO {MAVLINK_MESSAGE_INFO_ARM_CONTROL, MAVLINK_MESSAGE_INFO_CHASSIS_VELOCITY_CMD, MAVLINK_MESSAGE_INFO_CLIMBING_CMD, MAVLINK_MESSAGE_INFO_CLAMPING_CMD}
-# define MAVLINK_MESSAGE_NAMES {{ "ARM_CONTROL", 200 }, { "CHASSIS_VELOCITY_CMD", 201 }, { "CLAMPING_CMD", 203 }, { "CLIMBING_CMD", 202 }}
+# define MAVLINK_MESSAGE_INFO {MAVLINK_MESSAGE_INFO_ARM_CONTROL, MAVLINK_MESSAGE_INFO_CHASSIS_VELOCITY_CMD, MAVLINK_MESSAGE_INFO_CLIMBING_CMD, MAVLINK_MESSAGE_INFO_CLAMPING_CMD, MAVLINK_MESSAGE_INFO_CLAMPING_CMD_EXT}
+# define MAVLINK_MESSAGE_NAMES {{ "ARM_CONTROL", 200 }, { "CHASSIS_VELOCITY_CMD", 201 }, { "CLAMPING_CMD", 203 }, { "CLAMPING_CMD_EXT", 204 }, { "CLIMBING_CMD", 202 }}
 # if MAVLINK_COMMAND_24BIT
 #  include "../mavlink_get_info.h"
 # endif

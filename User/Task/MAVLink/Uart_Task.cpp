@@ -91,6 +91,10 @@ void UartTask() {
                                 Clamping_Get_Controller().ReleaseSolenoid();
                                 break;
                         }
+                    } else if (msg.msgid == MAVLINK_MSG_ID_CLAMPING_CMD_EXT) {
+                        mavlink_clamping_cmd_ext_t clamping_cmd_ext;
+                        mavlink_msg_clamping_cmd_ext_decode(&msg, &clamping_cmd_ext);
+                        Clamping_Get_Controller().MoveToAngle(clamping_cmd_ext.angle);
                     }
                 }
             }

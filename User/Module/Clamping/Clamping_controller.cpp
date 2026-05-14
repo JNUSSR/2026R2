@@ -28,6 +28,12 @@ void ClampingController::Init(CAN_HandleTypeDef *hcan)
         0.0f,
         CLAMPING_PID_ANGLE_OUT_MAX,
         CLAMPING_PID_ANGLE_I_OUT_MAX);
+    motor_clamp_2006_.LESO.Init(
+        CLAMPING_LESO_FREQUENCY,
+        CLAMPING_LESO_GAIN,
+        0.0f,
+        CLAMPING_LESO_KP
+    );
 
     motor_clamp_2006_.Init(hcan, CLAMPING_MOTOR_CAN_ID, Control_Method_ANGLE);
     motor_clamp_2006_.Set_Target_Angle(CLAMPING_TARGET_ANGLE_RESET_RAD);
@@ -48,6 +54,19 @@ void ClampingController::CAN_RxCallback(uint32_t std_id, uint8_t *data)
     {
         motor_clamp_2006_.CAN_RxCpltCallback(data);
     }
+}
+
+void ClampingController::MoveToAngle(float angle)
+{
+    if (angle > CLAMPING_TARGET_ANGLE_MAX_ANGLE)
+    {
+        angle = CLAMPING_TARGET_ANGLE_MAX_ANGLE;
+    }
+    else if (angle < CLAMPING_TARGET_ANGLE_MIN_ANGLE)
+    {
+        angle = CLAMPING_TARGET_ANGLE_MIN_ANGLE;
+    }
+    PlanToAngle(CLAMPING_ANGLE_TO_RAD(angle));
 }
 
 void ClampingController::MoveToClampAngle(void)

@@ -15,6 +15,7 @@
 /* Includes ------------------------------------------------------------------*/
 
 #include "alg_pid.h"
+#include "alg_leso.h"
 #include "drv_can.h"
 
 /* Exported macros -----------------------------------------------------------*/
@@ -203,6 +204,8 @@ public:
     Class_PID PID_Angle;
     // PID角速度环控制
     Class_PID PID_Omega;
+    // ESO自抗扰控制
+    FirstOrderSystemESO LESO;
 
     void Init(CAN_HandleTypeDef *__hcan, Enum_CAN_Motor_ID __CAN_ID, Enum_Control_Method __Control_Method = Control_Method_OMEGA, float __Gearbox_Rate = 36.0f, float __Torque_Max = 10000.0f);
 

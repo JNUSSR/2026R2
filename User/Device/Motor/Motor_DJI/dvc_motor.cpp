@@ -778,7 +778,10 @@ void Class_Motor_C610::TIM_PID_PeriodElapsedCallback()
         PID_Omega.Set_Now(Now_Omega);
         PID_Omega.TIM_Adjust_PeriodElapsedCallback();
 
-        Set_Out(PID_Omega.Get_Out());
+        LESO.Set_Target(Target_Omega);
+        LESO.Update(Now_Omega, Now_Torque);
+        
+        Set_Out(PID_Omega.Get_Out() + LESO.Get_Out());
     }
     break;
     default:

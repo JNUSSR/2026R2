@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web MAVLink GCS (完美布局版)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121215; color: #fff; margin: 0; padding: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        
+        /* 顶部导航栏 */
+        #topBar { height: 50px; background: #1e1e24; display: flex; align-items: center; padding: 0 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.5); z-index: 100; justify-content: space-between; border-bottom: 1px solid #333; flex-shrink: 0;}
+        .controls { display: flex; align-items: center; gap: 10px; }
+        button, select, input[type="number"], input[type="text"] { background: #0078D7; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 13px; outline: none; }
+        button { cursor: pointer; font-weight: bold; }
+        button:hover { background: #005A9E; }
+        button:disabled { background: #555; cursor: not-allowed; color: #888; }
+        select, input[type="number"], input[type="text"] { background: #333; border: 1px solid #555; color: #fff; }
+        input[type="file"] { width: 170px; font-size: 12px; }
+        
+        /* 核心分屏工作区 */
+        #workspace { display: flex; flex-grow: 1; overflow: hidden; width: 100%; height: calc(100vh - 50px); }
+        .column { display: flex; flex-direction: column; overflow: hidden; height: 100%; min-height: 0; }
+        #leftCol { width: 65%; } 
+        #rightCol { flex-grow: 1; }
+
+        /* 面板样式 (添加 min-height: 0 防止被内容强行撑开) */
+        .panel { background: #2b2b36; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+        .panel-header { background: #1e1e24; padding: 6px 12px; font-weight: bold; font-size: 13px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; color: #bbb;}
+        .panel-body { flex-grow: 1; position: relative; overflow: hidden; padding: 0; min-height: 0; } /* 改为 hidden，让内部绝对定位的区域负责滚动 */
+        
+        /* 分割线样式 */
+        .v-splitter { width: 6px; background: #1a1a20; cursor: col-resize; z-index: 10; transition: background 0.2s; border-left: 1px solid #333; border-right: 1px solid #333; flex-shrink: 0;}
+        .h-splitter { height: 6px; background: #1a1a20; cursor: row-resize; z-index: 10; transition: background 0.2s; border-top: 1px solid #333; border-bottom: 1px solid #333; flex-shrink: 0;}
+        .v-splitter:hover, .v-splitter:active, .h-splitter:hover, .h-splitter:active { background: #0078D7; }
+
+        /* 内容区绝对定位约束：彻底切断内容撑大父盒子的可能 */
+        #chartContainer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+        #logArea { position: absolute; top: 0; left: 0; right: 0; bottom: 0; font-family: 'Consolas', monospace; font-size: 12px; word-wrap: break-word; user-select: text; overflow-y: auto; padding: 5px; box-sizing: border-box;}
+        #treeArea { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow-y: auto; padding: 10px; box-sizing: border-box; }
+        #txContent { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow-y: auto; padding: 10px; box-sizing: border-box; }
+        
+        /* 滚动条美化 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e1e24; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #888; }
+
+        details { margin-bottom: 8px; background: #353542; border-radius: 4px; padding: 5px; }
+        summary { cursor: pointer; font-weight: bold; padding: 2px; color: #badc58; outline: none; }
+        ul { list-style: none; padding-left: 20px; margin: 5px 0 0 0; }
+        li { margin-bottom: 5px; display: flex; align-items: center; color: #ccc; font-size: 13px;}
+        input[type="checkbox"] { margin-right: 8px; cursor: pointer; }
+        .type-tag { color: #888; font-size: 11px; margin-left: 5px; }
+
+        .tx-form { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+        .tx-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+        .tx-row label { color: #ccc; }
+        .tx-row input { width: 100px; text-align: right; }
+
+        .log-sys { color: #f9ca24; } .log-err { color: #eb4d4b; } .log-msg { color: #badc58; } .log-tx { color: #00cec9; } .log-time { color: #535c68; margin-right: 10px; }
+        .stats { color: #95afc0; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <div id="topBar">
+        <div style="font-weight: bold; font-size: 16px; color: #00cec9;">🛸 MAVLink GCS <span style="font-size: 12px; color: #888; font-weight: normal; margin-left: 10px;">稳定布局版</span></div>
+        <div class="stats">
+            <span id="xmlStatus">XML未加载</span> | RX: <span id="packetCount">0</span> | TX: <span id="txCount">0</span> | CRC错: <span id="crcErrorCount">0</span>
+        </div>
+        <div class="controls">
+            <input type="file" id="xmlFile" accept=".xml">
+            <select id="baudRateSelect">
+                <option value="9600">9600</option>
+                <option value="57600">57600</option>
+                <option value="115200" selected>115200</option>
+                <option value="460800">460800</option>
+                <option value="921600">921600</option>
+                <option value="custom">自定义...</option>
+            </select>
+            <input type="number" id="customBaudRate" placeholder="波特率" style="display:none; width:70px;">
+            <button id="connectBtn" disabled>连接串口</button>
+            <button id="disconnectBtn" disabled style="background: #eb4d4b;">断开</button>
+            <button id="clearBtn" style="background: #e17055;">清除日志</button>
+        </div>
+    </div>
+
+    <div id="workspace">
+        
+        <div id="leftCol" class="column">
+            <div id="scopePanel" class="panel" style="height: 60%;">
+                <div class="panel-header">
+                    <span>📈 实时示波器</span>
+                    <div>
+                        <button id="pauseChartBtn" style="padding: 2px 8px; font-size: 12px; background: #e67e22; border-radius: 3px;">⏸️ 冻结画面以缩放</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div id="chartContainer"></div>
+                </div>
+            </div>
+            
+            <div class="h-splitter" id="hSplit1"></div>
+            
+            <div id="logPanel" class="panel" style="flex-grow: 1;">
+                <div class="panel-header">📝 通信日志 (智能跟随)</div>
+                <div class="panel-body">
+                    <div id="logArea"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="v-splitter" id="vSplit"></div>
+
+        <div id="rightCol" class="column">
+            <div id="dictPanel" class="panel" style="height: 50%;">
+                <div class="panel-header">📊 报文字典 (勾选显示波形)</div>
+                <div class="panel-body">
+                    <div id="treeArea">
+                        <div style="color: #666; text-align: center; margin-top: 20px;">请先加载 XML 文件</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="h-splitter" id="hSplit2"></div>
+
+            <div id="txPanel" class="panel" style="flex-grow: 1;">
+                <div class="panel-header">📤 指令发送控制台</div>
+                <div class="panel-body">
+                    <div id="txContent">
+                        <select id="txMsgSelect" style="width: 100%; margin-bottom: 10px; padding: 6px;" disabled>
+                            <option value="">等待加载 XML...</option>
+                        </select>
+                        <div id="txFieldsContainer" class="tx-form"></div>
+                        <button id="sendMsgBtn" style="width: 100%; margin-top: 15px; background: #27ae60; padding: 8px; display: none;">发送 MAVLink 报文</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+    <script>
+        // ==========================================
+        // 0. 边缘拖拽分屏引擎
+        // ==========================================
+        const leftCol = document.getElementById('leftCol');
+        const scopePanel = document.getElementById('scopePanel');
+        const dictPanel = document.getElementById('dictPanel');
+        const workspace = document.getElementById('workspace');
+        const rightCol = document.getElementById('rightCol');
+
+        let isDraggingV = false, isDraggingH1 = false, isDraggingH2 = false;
+
+        document.getElementById('vSplit').addEventListener('mousedown', () => { isDraggingV = true; document.body.style.cursor = 'col-resize'; });
+        document.getElementById('hSplit1').addEventListener('mousedown', () => { isDraggingH1 = true; document.body.style.cursor = 'row-resize'; });
+        document.getElementById('hSplit2').addEventListener('mousedown', () => { isDraggingH2 = true; document.body.style.cursor = 'row-resize'; });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDraggingV) {
+                const totalWidth = workspace.clientWidth;
+                const pct = (e.clientX / totalWidth) * 100;
+                leftCol.style.width = `${Math.max(15, Math.min(pct, 85))}%`;
+                myChart.resize(); 
+            }
+            if (isDraggingH1) {
+                const topOffset = leftCol.getBoundingClientRect().top;
+                const pct = ((e.clientY - topOffset) / leftCol.clientHeight) * 100;
+                scopePanel.style.height = `${Math.max(15, Math.min(pct, 85))}%`;
+                myChart.resize(); 
+            }
+            if (isDraggingH2) {
+                const topOffset = rightCol.getBoundingClientRect().top;
+                const pct = ((e.clientY - topOffset) / rightCol.clientHeight) * 100;
+                dictPanel.style.height = `${Math.max(15, Math.min(pct, 85))}%`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDraggingV = false; isDraggingH1 = false; isDraggingH2 = false;
+            document.body.style.cursor = 'default';
+        });
+
+        window.addEventListener('resize', () => myChart.resize());
+
+        // ==========================================
+        // 1. ECharts 波形渲染引擎 
+        // ==========================================
+        const myChart = echarts.init(document.getElementById('chartContainer'), null, {renderer: 'canvas', useDirtyRect: true}); 
+        let activeSeriesKeys = new Set(), seriesDataBuffer = {};        
+        let isChartPaused = false; 
+
+        document.getElementById('pauseChartBtn').addEventListener('click', (e) => {
+            isChartPaused = !isChartPaused;
+            e.target.innerText = isChartPaused ? '▶️ 恢复实时滚动' : '⏸️ 冻结画面以缩放';
+            e.target.style.background = isChartPaused ? '#27ae60' : '#e67e22';
+            
+            if (isChartPaused) {
+                myChart.setOption({
+                    dataZoom: [
+                        { type: 'inside', xAxisIndex: 0, filterMode: 'none' },
+                        { type: 'inside', yAxisIndex: 0, filterMode: 'none' },
+                        { type: 'slider', xAxisIndex: 0, show: true, bottom: 5, height: 15, textStyle: {color: '#888'}, borderColor: '#444' }
+                    ]
+                });
+            } else {
+                myChart.dispatchAction({ type: 'restore' }); 
+                myChart.setOption({
+                    dataZoom: [
+                        { type: 'inside', xAxisIndex: 0, filterMode: 'none' },
+                        { type: 'inside', yAxisIndex: 0, filterMode: 'none' },
+                        { type: 'slider', xAxisIndex: 0, show: false }
+                    ]
+                });
+            }
+        });
+
+        myChart.setOption({
+            backgroundColor: 'transparent', textStyle: { color: '#ccc' }, animation: false, hoverAnimation: false,
+            tooltip: { trigger: 'axis', animation: false },
+            legend: { data: [], top: 5, textStyle: { color: '#ccc' } },
+            grid: { left: '3%', right: '5%', bottom: '3%', containLabel: true },
+            toolbox: { show: true, feature: { dataZoom: { yAxisIndex: 'all' }, restore: {} }, iconStyle: { borderColor: '#888' }, right: 15, top: 5 },
+            dataZoom: [
+                { type: 'inside', xAxisIndex: 0, filterMode: 'none' }, 
+                { type: 'inside', yAxisIndex: 0, filterMode: 'none' },
+                { type: 'slider', xAxisIndex: 0, show: false }
+            ],
+            xAxis: { type: 'time', splitLine: { lineStyle: {color:'#222'} }, axisLabel: { formatter: '{mm}:{ss}.{SSS}', color: '#888' }, boundaryGap: [0, 0] },
+            yAxis: { type: 'value', splitLine: { lineStyle: { color: '#333' } }, scale: true, axisLabel: { color: '#888' } },
+            series: []
+        });
+
+        function renderChartFrame() {
+            requestAnimationFrame(renderChartFrame); 
+            if (isChartPaused) return; 
+
+            if (activeSeriesKeys.size > 0) {
+                let seriesArr = []; 
+                const now = Date.now(); 
+
+                for (let key of activeSeriesKeys) {
+                    seriesArr.push({ 
+                        name: key, type: 'line', showSymbol: false, silent: true, smooth: false, sampling: 'lttb', lineStyle: { width: 1.5 }, 
+                        data: seriesDataBuffer[key] || [] 
+                    });
+                }
+                
+                myChart.setOption({ 
+                    legend: { data: Array.from(activeSeriesKeys) }, 
+                    xAxis: { min: now - 8000, max: now }, 
+                    series: seriesArr 
+                }, { replaceMerge: ['series'] });
+            } else {
+                myChart.setOption({ series: [] }, { replaceMerge: ['series'] });
+            }
+        }
+        requestAnimationFrame(renderChartFrame); 
+
+        // ==========================================
+        // 2. MAVLink XML & CRC 算法
+        // ==========================================
+        const MAVLINK_STX_V2 = 0xFD;
+        const TYPE_SIZES = { 'uint64_t': 8, 'int64_t': 8, 'double': 8, 'uint32_t': 4, 'int32_t': 4, 'float': 4, 'uint16_t': 2, 'int16_t': 2, 'uint8_t': 1, 'int8_t': 1, 'char': 1 };
+        
+        function crcAccumulate(data, crc) { let tmp = data ^ (crc & 0xFF); tmp = (tmp ^ (tmp << 4)) & 0xFF; return ((crc >> 8) ^ (tmp << 8) ^ (tmp << 3) ^ (tmp >> 4)) & 0xFFFF; }
+        function calculateCrc16(buffer, initial = 0xFFFF) { let crc = initial; for (let i = 0; i < buffer.length; i++) crc = crcAccumulate(buffer[i], crc); return crc; }
+        
+        let messageDict = {}, enumDict = {};
+        document.getElementById('xmlFile').addEventListener('change', function(e) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try { parseXML(e.target.result); renderMessageTree(); populateTxSelect(); logsys(`✅ XML 解析成功，收发字典已就绪。`); } 
+                catch (err) { logerr(`❌ 解析失败: ${err.message}`); }
+            }; reader.readAsText(file);
+        });
+
+        function parseXML(xmlStr) {
+            messageDict = {}; enumDict = {}; const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlStr, "text/xml");
+            // 解析枚举
+            const enums = xmlDoc.getElementsByTagName("enum");
+            for (let i = 0; i < enums.length; i++) {
+                const e = enums[i]; const eName = e.getAttribute("name"); enumDict[eName] = {};
+                const entries = e.getElementsByTagName("entry");
+                for (let j = 0; j < entries.length; j++) {
+                    const entry = entries[j];
+                    enumDict[eName][parseInt(entry.getAttribute("value"))] = entry.getAttribute("name");
+                }
+            }
+            // 解析消息
+            const messages = xmlDoc.getElementsByTagName("message");
+            for (let i = 0; i < messages.length; i++) {
+                const msg = messages[i];
+                const msgId = parseInt(msg.getAttribute("id")), msgName = msg.getAttribute("name");
+                let baseFields = [];
+                for (let j = 0; j < msg.children.length; j++) {
+                    const node = msg.children[j];
+                    if (node.tagName === "field") {
+                        const typeRaw = node.getAttribute("type");
+                        baseFields.push({ name: node.getAttribute("name"), type: typeRaw.split('[')[0], arrayLength: typeRaw.includes('[') ? parseInt(typeRaw.split('[')[1]) : 0, originalIndex: j, enumName: node.getAttribute("enum") || null });
+                    } else if (node.tagName === "extensions") break;
+                }
+                baseFields.sort((a, b) => { let sizeA = TYPE_SIZES[a.type] || 1, sizeB = TYPE_SIZES[b.type] || 1; return sizeB - sizeA || a.originalIndex - b.originalIndex; });
+                let currentOffset = 0;
+                for (let f of baseFields) { f.offset = currentOffset; currentOffset += (TYPE_SIZES[f.type] || 1) * (f.arrayLength || 1); }
+                let crcSeed = 0xFFFF; const nameStr = msgName + " ";
+                for (let c = 0; c < nameStr.length; c++) crcSeed = crcAccumulate(nameStr.charCodeAt(c), crcSeed);
+                for (let f of baseFields) { const fStr = f.type + " " + f.name + " "; for (let c = 0; c < fStr.length; c++) crcSeed = crcAccumulate(fStr.charCodeAt(c), crcSeed); if(f.arrayLength > 0) crcSeed = crcAccumulate(f.arrayLength, crcSeed); }
+                messageDict[msgId] = { name: msgName, maxLength: currentOffset, crcExtra: (crcSeed & 0xFF) ^ (crcSeed >> 8), fields: baseFields };
+            }
+            document.getElementById('xmlStatus').innerText = `已加载 (${Object.keys(messageDict).length})`;
+            document.getElementById('connectBtn').disabled = false;
+        }
+
+        // ==========================================
+        // 3. UI 交互菜单
+        // ==========================================
+        function renderMessageTree() {
+            const tree = document.getElementById('treeArea'); let html = '';
+            Object.values(messageDict).forEach(msg => {
+                html += `<details><summary>📦 ${msg.name}</summary><ul>`;
+                msg.fields.forEach(f => {
+                    if (f.arrayLength === 0) {
+                        let enumInfo = '';
+                        if (f.enumName && enumDict[f.enumName]) {
+                            enumInfo = ` = <select style="background:#444;color:#badc58;border:1px solid #666;font-size:11px;padding:0 3px;border-radius:2px;">`;
+                            for (let [val, name] of Object.entries(enumDict[f.enumName])) {
+                                enumInfo += `<option value="${val}">${val}:${name}</option>`;
+                            }
+                            enumInfo += `</select>`;
+                        }
+                        html += `<li><label><input type="checkbox" value="${msg.name}.${f.name}" onchange="toggleSeries(this)"> ${f.name} <span class="type-tag">(${f.type}${f.enumName ? ', '+f.enumName : ''})</span></label>${enumInfo}</li>`;
+                    }
+                }); html += `</ul></details>`;
+            }); tree.innerHTML = html;
+        }
+
+        window.toggleSeries = function(cb) {
+            if (cb.checked) { 
+                activeSeriesKeys.add(cb.value); 
+                if (!seriesDataBuffer[cb.value]) seriesDataBuffer[cb.value] = []; 
+            } else { activeSeriesKeys.delete(cb.value); }
+            
+            if (isChartPaused) {
+                let seriesArr = [];
+                for (let key of activeSeriesKeys) { seriesArr.push({ name: key, type: 'line', showSymbol: false, silent: true, smooth: false, sampling: 'lttb', lineStyle: { width: 1.5 }, data: seriesDataBuffer[key] || [] }); }
+                myChart.setOption({ legend: { data: Array.from(activeSeriesKeys) }, series: seriesArr }, { replaceMerge: ['series'] });
+            }
+        };
+
+        function populateTxSelect() {
+            const select = document.getElementById('txMsgSelect'); select.innerHTML = '<option value="">-- 选择要发送的 MAVLink 消息 --</option>';
+            Object.keys(messageDict).forEach(id => { select.innerHTML += `<option value="${id}">[${id}] ${messageDict[id].name}</option>`; });
+            select.disabled = false;
+        }
+
+        document.getElementById('txMsgSelect').addEventListener('change', (e) => {
+            const container = document.getElementById('txFieldsContainer'), btn = document.getElementById('sendMsgBtn'); container.innerHTML = '';
+            if (!e.target.value) { btn.style.display = 'none'; return; }
+            messageDict[e.target.value].fields.forEach(f => {
+                if (f.arrayLength > 0) return;
+                if (f.enumName && enumDict[f.enumName]) {
+                    let opts = '';
+                    for (let [val, name] of Object.entries(enumDict[f.enumName])) {
+                        opts += `<option value="${val}">${name} (${val})</option>`;
+                    }
+                    container.innerHTML += `<div class="tx-row"><label>${f.name} <span class="type-tag">${f.type} [${f.enumName}]</span></label><select id="tx_field_${f.name}" data-type="${f.type}" style="width:140px;text-align:right;">${opts}</select></div>`;
+                } else {
+                    container.innerHTML += `<div class="tx-row"><label>${f.name} <span class="type-tag">${f.type}</span></label><input type="text" id="tx_field_${f.name}" data-type="${f.type}" value="0"></div>`;
+                }
+            });
+            btn.style.display = 'block';
+        });
+
+        // ==========================================
+        // 4. 通信引擎与智能滚动日志
+        // ==========================================
+        const logArea = document.getElementById('logArea');
+        document.getElementById('clearBtn').addEventListener('click', () => { logArea.innerHTML = ''; });
+
+        let immediateLogBatch = [];
+        
+        function flushLogs() {
+            if (immediateLogBatch.length === 0) return;
+            
+            // 核心逻辑：判断更新前，用户是否在查看底部？(允许 10px 误差)
+            const isAtBottom = (logArea.scrollHeight - logArea.scrollTop - logArea.clientHeight) < 10;
+            
+            const fragment = document.createDocumentFragment();
+            immediateLogBatch.forEach(html => { const div = document.createElement('div'); div.innerHTML = html; fragment.appendChild(div); });
+            logArea.appendChild(fragment);
+            
+            // 限制条数防崩溃
+            while (logArea.childNodes.length > 200) logArea.removeChild(logArea.firstChild);
+            
+            // 智能滚动：如果原来在底部，就继续滚到底部；如果用户翻上去了，就停在原处静默追加。
+            if (isAtBottom) {
+                logArea.scrollTop = logArea.scrollHeight;
+            }
+            
+            immediateLogBatch = []; 
+        }
+
+        function logImmediate(html) {
+            const time = new Date().toISOString().split('T')[1].slice(0, -1);
+            immediateLogBatch.push(`<span class="log-time">[${time}]</span> ${html}`); 
+            flushLogs();
+        }
+        function logsys(text) { logImmediate(`<span class="log-sys">${text}</span>`); }
+        function logerr(text) { logImmediate(`<span class="log-err">${text}</span>`); }
+
+        // ==========================================
+        // 5. 串口处理逻辑
+        // ==========================================
+        let port, reader;
+        let rxBuffer = new Uint8Array(0);
+        let statPackets = 0, statTxPackets = 0, statCrcErrors = 0, txSeq = 0;
+        let keepReading = false;
+        
+        let baudRateSelect = document.getElementById('baudRateSelect'), customBaudRate = document.getElementById('customBaudRate');
+        baudRateSelect.addEventListener('change', (e) => customBaudRate.style.display = e.target.value === 'custom' ? 'inline-block' : 'none');
+
+        document.getElementById('connectBtn').addEventListener('click', async () => {
+            let baud = baudRateSelect.value === 'custom' ? parseInt(customBaudRate.value) : parseInt(baudRateSelect.value);
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: baud }); 
+                document.getElementById('connectBtn').disabled = true; document.getElementById('disconnectBtn').disabled = false;
+                logsys(`✅ 串口连通 (${baud})。`); keepReading = true; readLoop();
+            } catch (err) { logerr(`连接失败: ${err}`); }
+        });
+
+        document.getElementById('disconnectBtn').addEventListener('click', async () => {
+            try {
+                keepReading = false; if (reader) await reader.cancel(); if (port) await port.close(); 
+                document.getElementById('connectBtn').disabled = false; document.getElementById('disconnectBtn').disabled = true;
+                logsys("🔌 串口安全断开。");
+            } catch (e) { logerr(`断开异常: ${e}`); }
+        });
+
+        document.getElementById('sendMsgBtn').addEventListener('click', async () => {
+            if (!port || !port.writable) return;
+            const msgId = parseInt(document.getElementById('txMsgSelect').value), msgDef = messageDict[msgId];
+            let payloadBuffer = new Uint8Array(msgDef.maxLength), dv = new DataView(payloadBuffer.buffer);
+            for (let f of msgDef.fields) {
+                if (f.arrayLength > 0) continue;
+                let el = document.getElementById(`tx_field_${f.name}`); if (!el) continue;
+                let valStr = el.tagName === 'SELECT' ? el.options[el.selectedIndex].value : el.value;
+                switch(f.type) {
+                    case 'float': dv.setFloat32(f.offset, parseFloat(valStr), true); break;
+                    case 'double': dv.setFloat64(f.offset, parseFloat(valStr), true); break;
+                    case 'uint32_t': dv.setUint32(f.offset, parseInt(valStr), true); break;
+                    case 'int32_t': dv.setInt32(f.offset, parseInt(valStr), true); break;
+                    case 'uint16_t': dv.setUint16(f.offset, parseInt(valStr), true); break;
+                    case 'int16_t': dv.setInt16(f.offset, parseInt(valStr), true); break;
+                    case 'uint8_t': dv.setUint8(f.offset, parseInt(valStr)); break;
+                    case 'int8_t': dv.setInt8(f.offset, parseInt(valStr)); break;
+                }
+            }
+            let len = msgDef.maxLength; while (len > 0 && payloadBuffer[len - 1] === 0) len--;
+            let trimmedPayload = payloadBuffer.slice(0, len), header = new Uint8Array(10);
+            header[0] = 0xFD; header[1] = len; header[2] = 0; header[3] = 0; header[4] = txSeq++ & 0xFF; header[5] = 255; header[6] = 0; 
+            header[7] = msgId & 0xFF; header[8] = (msgId >> 8) & 0xFF; header[9] = (msgId >> 16) & 0xFF;
+            let crc = 0xFFFF;
+            for (let i=1; i<10; i++) crc = crcAccumulate(header[i], crc);
+            for (let i=0; i<len; i++) crc = crcAccumulate(trimmedPayload[i], crc);
+            crc = crcAccumulate(msgDef.crcExtra, crc);
+            let frame = new Uint8Array(10 + len + 2);
+            frame.set(header, 0); frame.set(trimmedPayload, 10); frame[10 + len] = crc & 0xFF; frame[10 + len + 1] = (crc >> 8) & 0xFF;
+            try {
+                const writer = port.writable.getWriter(); await writer.write(frame); writer.releaseLock();
+                statTxPackets++; document.getElementById('txCount').innerText = statTxPackets;
+                logImmediate(`<span class="log-tx">⬆️ [TX 发送] ${msgDef.name} 成功</span>`);
+            } catch(e) { logerr(`❌ 发送失败: ${e}`); }
+        });
+
+        let lastParsedTime = 0; 
+        async function readLoop() {
+            while (port.readable && keepReading) {
+                reader = port.readable.getReader();
+                try {
+                    while (true) {
+                        const { value, done } = await reader.read(); if (done) break; 
+                        let b = new Uint8Array(rxBuffer.length + value.length); b.set(rxBuffer); b.set(value, rxBuffer.length); rxBuffer = b;
+                        processFrames();
+                    }
+                } catch (e) { } finally { reader.releaseLock(); }
+            }
+        }
+
+        function processFrames() {
+            try {
+                while (rxBuffer.length >= 12) { 
+                    let stxIdx = rxBuffer.indexOf(MAVLINK_STX_V2);
+                    if (stxIdx === -1) { if (rxBuffer.length > 200) rxBuffer = new Uint8Array(0); break; }
+                    if (stxIdx > 0) rxBuffer = rxBuffer.slice(stxIdx); 
+                    if (rxBuffer.length < 12) break; 
+                    
+                    const payloadLen = rxBuffer[1]; const isSigned = (rxBuffer[2] & 0x01) !== 0; 
+                    const frameLen = 10 + payloadLen + 2 + (isSigned ? 13 : 0); 
+                    if (rxBuffer.length < frameLen) break; 
+                    
+                    const msgId = rxBuffer[7] | (rxBuffer[8] << 8) | (rxBuffer[9] << 16);
+                    const msgDef = messageDict[msgId];
+                    if (!msgDef) { rxBuffer = rxBuffer.slice(frameLen); continue; }
+                    
+                    let crcCal = crcAccumulate(msgDef.crcExtra, calculateCrc16(rxBuffer.slice(1, 10 + payloadLen)));
+                    let crcRec = rxBuffer[10 + payloadLen] | (rxBuffer[10 + payloadLen + 1] << 8);
+                    if (crcCal !== crcRec) { statCrcErrors++; document.getElementById('crcErrorCount').innerText = statCrcErrors; rxBuffer = rxBuffer.slice(1); continue; }
+                    
+                    let pad = new Uint8Array(msgDef.maxLength); let copyLen = Math.min(payloadLen, msgDef.maxLength);
+                    pad.set(rxBuffer.slice(10, 10 + copyLen), 0); 
+                    const dv = new DataView(pad.buffer);
+                    let result = {}; 
+                    
+                    let frameTime = Date.now();
+                    if (frameTime <= lastParsedTime) frameTime = lastParsedTime + 2; 
+                    lastParsedTime = frameTime;
+
+                    for (let f of msgDef.fields) {
+                        if (f.arrayLength > 0) continue;
+                        let val;
+                        switch(f.type) {
+                            case 'float': val = dv.getFloat32(f.offset, true); break;
+                            case 'double': val = dv.getFloat64(f.offset, true); break;
+                            case 'uint32_t': val = dv.getUint32(f.offset, true); break;
+                            case 'int32_t': val = dv.getInt32(f.offset, true); break;
+                            case 'uint16_t': val = dv.getUint16(f.offset, true); break;
+                            case 'int16_t': val = dv.getInt16(f.offset, true); break;
+                            case 'uint8_t': val = dv.getUint8(f.offset); break;
+                            case 'int8_t': val = dv.getInt8(f.offset); break;
+                        }
+                        // 枚举字段解析为名称
+                        if (f.enumName && enumDict[f.enumName] && enumDict[f.enumName][val]) {
+                            result[f.name] = `${enumDict[f.enumName][val]}(${val})`;
+                        } else {
+                            result[f.name] = val;
+                        }
+                        const key = `${msgDef.name}.${f.name}`;
+                        
+                        if (!seriesDataBuffer[key]) seriesDataBuffer[key] = [];
+                        seriesDataBuffer[key].push({name: frameTime.toString(), value: [frameTime, val]}); 
+                        if (seriesDataBuffer[key].length > 2000) seriesDataBuffer[key].shift();
+                    }
+                    statPackets++; document.getElementById('packetCount').innerText = statPackets;
+                    
+                    const timeStr = new Date(frameTime).toISOString().split('T')[1].slice(0, -1);
+                    immediateLogBatch.push(`<span class="log-time">[${timeStr}]</span> <span class="log-msg">⬇️ [RX] [${msgDef.name}] ${JSON.stringify(result)}</span>`);
+                    
+                    rxBuffer = rxBuffer.slice(frameLen);
+                }
+                if (immediateLogBatch.length > 0) flushLogs();
+            } catch (e) { console.error("解包异常:", e); rxBuffer = new Uint8Array(0); }
+        }
+    </script>
+</body>
+</html>
