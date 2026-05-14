@@ -241,7 +241,7 @@ public:
     ClimbingState_e GetState(void) { return climb_state_; }
 
     // 初始化电机/斜坡/PID
-    void Init(CAN_HandleTypeDef *hcan);
+    void Init(void);
     void TaskEntry1ms(void);
     // 1ms 自动流程推进器: 仅切状态
     void AutoTask1ms(void);

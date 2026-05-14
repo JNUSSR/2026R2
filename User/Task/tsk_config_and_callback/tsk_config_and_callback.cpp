@@ -18,12 +18,12 @@
 
 extern "C" void Chassis_CAN_Rx_Dispatch(CAN_HandleTypeDef *hcan, Struct_CAN_Rx_Buffer *Rx_Buffer);
 
+extern Class_Motor_C620 Motor_Z;
+extern Class_Motor_C610 Motor_X;
+extern Class_Motor_C610 Motor_R;
+
 static void CAN1_Global_Call_Back(Struct_CAN_Rx_Buffer *Rx_Buffer) {
     switch (Rx_Buffer->Header.StdId) {
-        case (0x201): {
-            Climbing_CAN_Rx_Dispatch(Rx_Buffer);
-            break;
-        }
         case (0x202): {
             Climbing_CAN_Rx_Dispatch(Rx_Buffer);
             break;
@@ -36,6 +36,14 @@ static void CAN1_Global_Call_Back(Struct_CAN_Rx_Buffer *Rx_Buffer) {
             Climbing_CAN_Rx_Dispatch(Rx_Buffer);
             break;
         }
+        case (0x206): {
+            Motor_X.CAN_RxCpltCallback(Rx_Buffer->Data);
+            break;
+        }
+        case (0x207): {
+            Motor_R.CAN_RxCpltCallback(Rx_Buffer->Data);
+            break;
+        }
         case (0x205): {
             Clamping_CAN_Rx_Dispatch(Rx_Buffer);
             break;
@@ -44,10 +52,6 @@ static void CAN1_Global_Call_Back(Struct_CAN_Rx_Buffer *Rx_Buffer) {
             break;
     }
 }
-
-extern Class_Motor_C620 Motor_Z;
-extern Class_Motor_C610 Motor_X;
-extern Class_Motor_C610 Motor_R;
 
 void CAN2_Global_Call_Back(Struct_CAN_Rx_Buffer *Rx_Buffer) {
     switch (Rx_Buffer->Header.StdId) {
@@ -60,12 +64,10 @@ void CAN2_Global_Call_Back(Struct_CAN_Rx_Buffer *Rx_Buffer) {
         case (0x205):
             Motor_Z.CAN_RxCpltCallback(Rx_Buffer->Data);
             break;
-        case (0x206):
-            Motor_X.CAN_RxCpltCallback(Rx_Buffer->Data);
+            case (0x206): {
+            Climbing_CAN_Rx_Dispatch(Rx_Buffer);
             break;
-        case (0x207):
-            Motor_R.CAN_RxCpltCallback(Rx_Buffer->Data);
-            break;
+        }
     }
 }
 

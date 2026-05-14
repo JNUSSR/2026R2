@@ -18,7 +18,7 @@ void Climbing_CAN_Rx_Dispatch(Struct_CAN_Rx_Buffer *Rx_Buffer)
 void ClimbingTask(void)
 {
     // 与 docking 一致: 任务入口里完成一次初始化
-    climbingCtrl.Init(&hcan1);
+    climbingCtrl.Init();
     for (;;)
     {
         // 1ms 周期: 先推进自动状态, 再执行主控制
@@ -31,7 +31,7 @@ void ClimbingTask(void)
 void Climbing_Task_Init(void)
 {
     // 兼容旧调用方式(保留给历史代码)
-    climbingCtrl.Init(&hcan1);
+    climbingCtrl.Init();
 }
 
 void Climbing_Task_Entry(void)

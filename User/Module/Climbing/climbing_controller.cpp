@@ -1,4 +1,5 @@
 #include "climbing_controller.h"
+#include "can.h"
 
 
 // ------------------------------------------------------------
@@ -300,17 +301,17 @@ void ClimbingController::RunLiftAndWheelControl(void)
     motor_wheel_r_.TIM_PID_PeriodElapsedCallback();
 }
 
-void ClimbingController::Init(CAN_HandleTypeDef *hcan)
+void ClimbingController::Init(void)
 {
     // 初始化顺序:
     // 1) 斜坡规划器 2) 电机对象 3) 底盘模块 4) PID 参数 5) 运行状态变量
     slope_wheel_l_angle_.Init(WHEEL_SLOPE_STEP_UP, WHEEL_SLOPE_STEP_UP, Slope_First_REAL);
     slope_wheel_r_angle_.Init(WHEEL_SLOPE_STEP_UP, WHEEL_SLOPE_STEP_UP, Slope_First_REAL);
 
-    motor_lift_front_.Init(hcan, CAN_Motor_ID_0x201, Control_Method_ANGLE);
-    motor_lift_rear_.Init(hcan, CAN_Motor_ID_0x202, Control_Method_ANGLE);
-    motor_wheel_l_.Init(hcan, CAN_Motor_ID_0x203, Control_Method_ANGLE);
-    motor_wheel_r_.Init(hcan, CAN_Motor_ID_0x204, Control_Method_ANGLE);
+    motor_lift_front_.Init(&hcan2, CAN_Motor_ID_0x206, Control_Method_ANGLE);
+    motor_lift_rear_.Init(&hcan1, CAN_Motor_ID_0x202, Control_Method_ANGLE);
+    motor_wheel_l_.Init(&hcan1, CAN_Motor_ID_0x203, Control_Method_ANGLE);
+    motor_wheel_r_.Init(&hcan1, CAN_Motor_ID_0x204, Control_Method_ANGLE);
 
     motor_lift_front_.PID_Omega.Init(PID_FRONT_OMEGA_KP_NORMAL, 5.0f, 0.0f, 0.0f, 10000.0f, 12000.0f);
     motor_lift_front_.PID_Angle.Init(PID_FRONT_ANGLE_KP_NORMAL, 0.5f, 0.0f, 0.0f, 10000.0f, 12000.0f);
@@ -333,8 +334,8 @@ void ClimbingController::Init(CAN_HandleTypeDef *hcan)
 
 void ClimbingController::CAN_RxCallback(uint32_t std_id, uint8_t *data)
 {
-    // 201~204 分别对应: 前腿/后腿/左轮/右轮
-    if (std_id == 0x201)
+    // 206/202~204 分别对应: 前腿/后腿/左轮/右轮
+    if (std_id == 0x206)
     {
         motor_lift_front_.CAN_RxCpltCallback(data);
     }
